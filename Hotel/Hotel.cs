@@ -30,11 +30,11 @@ namespace Oxide.Plugins
 
         #region Fields
 
-        private Timer _hotelGuiTimer;
-        private bool _hotelPanelLoaded;
-        private Timer _hotelRoomCheckoutTimer;
-        private readonly Hash<BasePlayer, Timer> _playerGuiTimers = new Hash<BasePlayer, Timer>();
-        private readonly Hash<BasePlayer, Timer> _playerBlackListGuiTimers = new Hash<BasePlayer, Timer>();
+        private Timer hotelGuiTimer;
+        private bool hotelPanelLoaded;
+        private Timer hotelRoomCheckoutTimer;
+        private readonly Hash<BasePlayer, Timer> playerGuiTimers = new Hash<BasePlayer, Timer>();
+        private readonly Hash<BasePlayer, Timer> playerBlackListGuiTimers = new Hash<BasePlayer, Timer>();
 
         private static StoredData _storedData;
         
@@ -43,10 +43,10 @@ namespace Oxide.Plugins
         static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0);
         
         public static Quaternion DefaultQuaternion = new Quaternion(0f, 0f, 0f, 0f);
-        public static Dictionary<string, HotelData> EditHotel = new Dictionary<string, HotelData>();
-        public static Dictionary<string, HotelMarker> HotelMarkers = new Dictionary<string, HotelMarker>(); 
-        public static Vector3 Vector3Up = new Vector3(0f, 0.1f, 0f);
-        public static Vector3 Vector3Up2 = new Vector3(0f, 1.5f, 0f);
+        private static Dictionary<string, HotelData> EditHotel = new Dictionary<string, HotelData>();
+        private static Dictionary<string, HotelMarker> HotelMarkers = new Dictionary<string, HotelMarker>(); 
+        private static readonly Vector3 Vector3Up = new Vector3(0f, 0.1f, 0f);
+        private static readonly Vector3 Vector3Up2 = new Vector3(0f, 1.5f, 0f);
         
         
         #endregion
@@ -199,110 +199,19 @@ namespace Oxide.Plugins
                             Width = 0.85
                         }
                     },
-                    AdminGuiJson = @"[ {
-                        ""name"": ""HotelAdmin"",
-                        ""parent"": ""Overlay"",
-                        ""components"":
-                        [
-                            {
-                                 ""type"":""UnityEngine.UI.Image"",
-                                 ""color"":""0.1 0.1 0.1 0.7"",
-                            },
-                            {
-                                ""type"":""RectTransform"",
-                                ""anchormin"": ""{xmin} {ymin}"",
-                                ""anchormax"": ""{xmax} {ymax}""
+                    AdminGuiJson = @"[{""name"": ""HotelAdmin"",""parent"": ""Overlay"",""components"":[{""type"":""UnityEngine.UI.Image"",""color"":""0.1 0.1 0.1 0.7"",},
+                            {""type"":""RectTransform"",""anchormin"": ""{xmin} {ymin}"", ""anchormax"": ""{xmax} {ymax}""}]},{""parent"": ""HotelAdmin"",""components"":
+                            [{""type"":""UnityEngine.UI.Text"", ""text"":""{msg}"",""fontSize"":15, ""align"": ""MiddleLeft""},{""type"":""RectTransform"",
+                            ""anchormin"": ""0.1 0.1"",""anchormax"": ""1 1"" }]}]",
 
-                            }
-                        ]
-                    },
-                    {
-                        ""parent"": ""HotelAdmin"",
-                        ""components"":
-                        [
-                            {
-                                ""type"":""UnityEngine.UI.Text"",
-                                ""text"":""{msg}"",
-                                ""fontSize"":15,
-                                ""align"": ""MiddleLeft"",
-                            },
-                            {
-                                ""type"":""RectTransform"",
-                                ""anchormin"": ""0.1 0.1"",
-                                ""anchormax"": ""1 1""
-                            }
-                        ]
-                    }]",
-                    PlayerGuiJson = @"[
-                    {
-                        ""name"": ""HotelPlayer"",
-                        ""parent"": ""Overlay"",
-                        ""components"":
-                        [
-                            {
-                                 ""type"":""UnityEngine.UI.Image"",
-                                 ""color"":""0.1 0.1 0.1 0.7"",
-                            },
-                            {
-                                ""type"":""RectTransform"",
-                                ""anchormin"": ""{pxmin} {pymin}"",
-                                ""anchormax"": ""{pxmax} {pymax}""
-
-                            }
-                        ]
-                    },
-                    {
-                        ""parent"": ""HotelPlayer"",
-                        ""components"":
-                        [
-                            {
-                                ""type"":""UnityEngine.UI.Text"",
-                                ""text"":""{msg}"",
-                                ""fontSize"":15,
-                                ""align"": ""MiddleLeft"",
-                            },
-                            {
-                                ""type"":""RectTransform"",
-                                ""anchormin"": ""0.1 0.1"",
-                                ""anchormax"": ""1 1""
-                            }
-                        ]
-                    }]",
-                    BlackListGuiJson = @"[
-                    {
-                        ""name"": ""HotelBlackList"",
-                        ""parent"": ""Overlay"",
-                        ""components"":
-                        [
-                            {
-                                 ""type"":""UnityEngine.UI.Image"",
-                                 ""color"":""0.1 0.1 0.1 0.7"",
-                            },
-                            {
-                                ""type"":""RectTransform"",
-                                ""anchormin"": ""{pxmin} {pymin}"",
-                                ""anchormax"": ""{pxmax} {pymax}""
-
-                            }
-                        ]
-                    },
-                    {
-                        ""parent"": ""HotelBlackList"",
-                        ""components"":
-                        [
-                            {
-                                ""type"":""UnityEngine.UI.Text"",
-                                ""text"":""{msg}"",
-                                ""fontSize"":15,
-                                ""align"": ""MiddleLeft"",
-                            },
-                            {
-                                ""type"":""RectTransform"",
-                                ""anchormin"": ""0.1 0.1"",
-                                ""anchormax"": ""1 1""
-                            }
-                        ]
-                    }]",
+                    PlayerGuiJson = @"[{""name"": ""HotelPlayer"",""parent"": ""Overlay"",""components"":[{""type"":""UnityEngine.UI.Image"",""color"":""0.1 0.1 0.1 0.7"",},
+                            {""type"":""RectTransform"",""anchormin"": ""{pxmin} {pymin}"",""anchormax"": ""{pxmax} {pymax}""}]},{""parent"": ""HotelPlayer"",""components"":
+                            [{""type"":""UnityEngine.UI.Text"",""text"":""{msg}"",""fontSize"":15,""align"": ""MiddleLeft"",},{""type"":""RectTransform"",
+                            ""anchormin"": ""0.1 0.1"",""anchormax"": ""1 1""}]}]",
+                    BlackListGuiJson = @"[{""name"": ""HotelBlackList"",""parent"": ""Overlay"",""components"":[{""type"":""UnityEngine.UI.Image"",""color"":""0.1 0.1 0.1 0.7"",},
+                            {""type"":""RectTransform"",""anchormin"": ""{pxmin} {pymin}"",""anchormax"": ""{pxmax} {pymax}""}]},{""parent"": ""HotelBlackList"",""components"":
+                            [{""type"":""UnityEngine.UI.Text"",""text"":""{msg}"",""fontSize"":15,""align"": ""MiddleLeft"",},{""type"":""RectTransform"",
+                            ""anchormin"": ""0.1 0.1"",""anchormax"": ""1 1""}]}]",
                     MapMarker = "\t\t\t{name} Hotel\r\n{fnum} of {rnum} Rooms Available\r\n{rp} {rc} per {rd} Seconds",
                     MapMarkerColor = "#710AC1",
                     MapMarkerColorBorder = "#5FCEA8",
@@ -668,7 +577,7 @@ namespace Oxide.Plugins
         {
             InfoPanelInit();
             CheckTimeOutRooms();
-            _hotelRoomCheckoutTimer = timer.Repeat(60f, 0, CheckTimeOutRooms);
+            hotelRoomCheckoutTimer = timer.Repeat(60f, 0, CheckTimeOutRooms);
         }
 
         void OnUseNPC(BasePlayer npc, BasePlayer player)
@@ -691,9 +600,9 @@ namespace Oxide.Plugins
         {
             try
             {
-                _hotelPanelLoaded = InfoPanel.Call<bool>("PanelRegister", "Hotel", "HotelPanel",
+                hotelPanelLoaded = InfoPanel.Call<bool>("PanelRegister", "Hotel", "HotelPanel",
                     JsonConvert.SerializeObject(_config.HotelPanel));
-                if (_hotelPanelLoaded)
+                if (hotelPanelLoaded)
                     InfoPanel.Call("ShowPanel", "Hotel", "HotelPanel");
             }
             catch
@@ -1064,15 +973,22 @@ namespace Oxide.Plugins
             return false;
         }
 
+        private bool HasAccess(BasePlayer player, string accessRole = "admin")
+        {
+            if (player == null) return false;
+            return player.net.connection.authLevel >= _config.AuthLevel ||
+                   permission.UserHasPermission(player.UserIDString, $"hotel.{accessRole}");
+        }
+
         private void InfoPanelInit()
         {
             if (!InfoPanel || !InfoPanel.IsLoaded) return;
 
             InfoPanel.Call("SendPanelInfo", "Hotel", new List<string> { "HotelPanel" });
             AddHotelPanel();
-            if (_hotelGuiTimer == null && _hotelPanelLoaded)
+            if (hotelGuiTimer == null && hotelPanelLoaded)
             {
-                _hotelGuiTimer = timer.Repeat(5, 0, UpdateHotelCounter);
+                hotelGuiTimer = timer.Repeat(5, 0, UpdateHotelCounter);
             }
         }
 
@@ -1256,7 +1172,7 @@ namespace Oxide.Plugins
             CleanUpMarkers();
 
             SaveData();
-            _hotelRoomCheckoutTimer.Destroy();
+            hotelRoomCheckoutTimer.Destroy();
         }
 
         private static void UnlockLock(CodeLock codeLock)
@@ -1267,7 +1183,7 @@ namespace Oxide.Plugins
 
         private void UpdateHotelCounter()
         {
-            if (!InfoPanel || !InfoPanel.IsLoaded || !_hotelPanelLoaded) return;
+            if (!InfoPanel || !InfoPanel.IsLoaded || !hotelPanelLoaded) return;
 
             foreach (var basePlayer in BasePlayer.activePlayerList)
             {
@@ -1316,7 +1232,7 @@ namespace Oxide.Plugins
             var send = _config.BlackListGuiJson.Replace("{msg}", msg);
             CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
                 null, "AddUI", send);
-            _playerBlackListGuiTimers[player] = timer.Once(_config.PanelTimeOut, () => RemoveBlackListGui(player));
+            playerBlackListGuiTimers[player] = timer.Once(_config.PanelTimeOut, () => RemoveBlackListGui(player));
         }
 
         private string CreateBlackListGuiMsg(BasePlayer player, HotelData hotel, List<string> blackList)
@@ -1328,10 +1244,9 @@ namespace Oxide.Plugins
 
         private void RemoveBlackListGui(BasePlayer player)
         {
-            Puts($"Removing BL GUI");
             if (player == null || player.net == null) return;
-            if (_playerBlackListGuiTimers[player] != null)
-                _playerBlackListGuiTimers[player].Destroy();
+            if (playerBlackListGuiTimers[player] != null)
+                playerBlackListGuiTimers[player].Destroy();
             
             CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
                 null, "DestroyUI", "HotelBlackList");
@@ -1358,7 +1273,7 @@ namespace Oxide.Plugins
 
             CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
                 null, "AddUI", send);
-            _playerGuiTimers[player] = timer.Once(_config.PanelTimeOut, () => RemovePlayerHotelGui(player));
+            playerGuiTimers[player] = timer.Once(_config.PanelTimeOut, () => RemovePlayerHotelGui(player));
         }
 
         private static string ConvertSecondsToBetter(string seconds)
@@ -1488,8 +1403,8 @@ namespace Oxide.Plugins
         private void RemovePlayerHotelGui(BasePlayer player)
         {
             if (player == null || player.net == null) return;
-            if (_playerGuiTimers[player] != null)
-                _playerGuiTimers[player].Destroy();
+            if (playerGuiTimers[player] != null)
+                playerGuiTimers[player].Destroy();
             CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
                 null, "DestroyUI", "HotelPlayer");
         }
@@ -1617,14 +1532,7 @@ namespace Oxide.Plugins
         #endregion
 
         #region Chat Commands
-
-        private bool HasAccess(BasePlayer player, string accessRole = "admin")
-        {
-            if (player == null) return false;
-            return player.net.connection.authLevel >= _config.AuthLevel ||
-                   permission.UserHasPermission(player.UserIDString, $"hotel.{accessRole}");
-        }
-
+        
         [ChatCommand("hotel_save")]
         void CmdChatHotelSave(BasePlayer player, string command, string[] args)
         {
@@ -1699,7 +1607,6 @@ namespace Oxide.Plugins
         [ChatCommand("hotel")]
         void CmdChatHotel(BasePlayer player, string command, string[] args)
         {
-            Puts("In Hotel Command");
             if (!HasAccess(player))
             {
                 SendReply(player, GetMsg("MessageErrorNotAllowed", player.userID));

@@ -13,3 +13,4 @@
 /Hotel/ZoneManager.cs
 *.csproj
 /Backpacks
+*.user
