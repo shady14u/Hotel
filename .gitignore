@@ -3,3 +3,13 @@
 ################################################################################
 
 /RustPlugins/.vs
+/RustPlugins/Hotel/obj
+/RustPlugins/Hotel/ZoneManager.cs
+/RustPlugins/Backpacks
+*.sln
+/.vs
+/RustPlugins/Hotel/Hotel.csproj
+/Hotel/obj
+/Hotel/ZoneManager.cs
+*.csproj
+/Backpacks
