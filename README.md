@@ -14,6 +14,7 @@
 ## Permissions
 - `hotel.admin` -- required admin only permission for hotel setup
 - `hotel.extend` -- required player permission for `/hotel_extend` command
+- `hotel.renter` -- default hotel permission, you can add and assign with hotel.admin permission
 
 ## Chat Commands
 **Player Commands (oxide permission: hotel.extend):**
@@ -21,11 +22,13 @@
 - `/hotel_extend {NAME}` => Extends the players stay, by adding the rent duration to the current checkout date/time, for an additional fee. Allows player to rent their room longer for more Cost.
 
 **Admin Commands (oxide permission: hotel.admin):**
-- `/hotel_new {NAME}` => Creates a new hotel with the {Name}
-- `/hotel_edit {NAME}` => Starts Editing an existing Hotel with the {Name}
-- `/hotel_remove {NAME}` => Remove the Hotel named {Name}
-- `/hotel_list` => Gets a list of the hotels
 - `/hotel ARG1 ARG2` => Edit the hotel options
+- `/hotel_disable {player}` => Revokes Player *hotel.renter* Permission
+- `/hotel_enable {player}` => Grants Player *hotel.renter* Permission
+- `/hotel_edit {NAME}` => Starts Editing an existing Hotel with the {Name}
+- `/hotel_list` => Gets a list of the hotels
+- `/hotel_new {NAME}` => Creates a new hotel with the {Name}
+- `/hotel_remove {NAME}` => Remove the Hotel named {Name}
 - `/hotel_reset` => Remove **ALL** hotels **Use with caution**
 - `/room optional:ROOMID reset` => resets the room clear out the renter
 - `/room optional:ROOMID duration XX` => sets a NEW duration for the room in seconds (Room must be rented and it only affects current player's room duration)
@@ -34,7 +37,7 @@
 - `/hotel kickhobos [true/false]` => when true any player trying to sleep without owning a room is ejected from the zone
 - `/hotel location` => sets the hotel center location to where you stand, and applies the default zone flags from the config
 - `/hotel npc NPCID` => sets the NPC that is hooked to this hotel this requires **HumanNPC** 
-- `/hotel permission XX` => sets the required permission to rent a room at this hotel
+- `/hotel permission XX` => sets the required permission to rent a room at this hotel (ie. *renter*)
 - `/hotel radius XX` => sets the radius of the hotel (the entire structure of the hotel needs to be covered by the zone)
 - `/hotel rentduration XX` => Sets the duration of a default rent in this hotel. 0 is infinite
 - `/hotel rentprice XXX` => Sets the rent price.
