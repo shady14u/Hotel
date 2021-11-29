@@ -17,14 +17,14 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.17")]
+    [Info("Hotel", "Shady14u", "2.0.18")]
     [Description("Complete Hotel System for Rust.")]
     public class Hotel : RustPlugin
     {
         #region PluginReferences
 
         [PluginReference] 
-        Plugin ZoneManager, Economics, ServerRewards, InfoPanel;
+        Plugin ZoneManager, Economics, ServerRewards, InfoPanel, Backpacks;
 
         #endregion
 
@@ -35,8 +35,9 @@ namespace Oxide.Plugins
         private Timer hotelRoomCheckoutTimer;
         private readonly Hash<BasePlayer, Timer> playerGuiTimers = new Hash<BasePlayer, Timer>();
         private readonly Hash<BasePlayer, Timer> playerBlackListGuiTimers = new Hash<BasePlayer, Timer>();
+        private readonly Hash<ulong, HotelData> hotelGuests = new Hash<ulong, HotelData>();
 
-        private static StoredData _storedData;
+        private StoredData storedData;
         
         static readonly int ConstructionColl = LayerMask.GetMask("Construction", "Construction Trigger");
         static readonly int DeployableColl = LayerMask.GetMask("Deployed");
@@ -53,7 +54,7 @@ namespace Oxide.Plugins
 
         #region Config
 
-        private static Configuration _config;
+        private Configuration config;
 
         public class Configuration
         {
@@ -229,8 +230,8 @@ namespace Oxide.Plugins
             base.LoadConfig();
             try
             {
-                _config = Config.ReadObject<Configuration>();
-                if (_config == null) LoadDefaultConfig();
+                config = Config.ReadObject<Configuration>();
+                if (config == null) LoadDefaultConfig();
                 SaveConfig();
             }
             catch (Exception)
@@ -239,20 +240,20 @@ namespace Oxide.Plugins
                 LoadDefaultConfig();
             }
 
-            if (_config != null)
+            if (config != null)
             {
-                _config.AdminGuiJson = _config.AdminGuiJson.Replace("{xmin}", _config.XMin)
-                    .Replace("{xmax}", _config.XMax).Replace("{ymin}", _config.YMin).Replace("{ymax}", _config.YMax);
-                _config.PlayerGuiJson = _config.PlayerGuiJson.Replace("{pxmin}", _config.PanelXMin)
-                    .Replace("{pxmax}", _config.PanelXMax).Replace("{pymin}", _config.PanelYMin)
-                    .Replace("{pymax}", _config.PanelYMax);
-                _config.BlackListGuiJson = _config.BlackListGuiJson.Replace("{pxmin}", _config.PanelXMin)
-                    .Replace("{pxmax}", _config.PanelXMax).Replace("{pymin}", _config.PanelYMin)
-                    .Replace("{pymax}", _config.PanelYMax);
+                config.AdminGuiJson = config.AdminGuiJson.Replace("{xmin}", config.XMin)
+                    .Replace("{xmax}", config.XMax).Replace("{ymin}", config.YMin).Replace("{ymax}", config.YMax);
+                config.PlayerGuiJson = config.PlayerGuiJson.Replace("{pxmin}", config.PanelXMin)
+                    .Replace("{pxmax}", config.PanelXMax).Replace("{pymin}", config.PanelYMin)
+                    .Replace("{pymax}", config.PanelYMax);
+                config.BlackListGuiJson = config.BlackListGuiJson.Replace("{pxmin}", config.PanelXMin)
+                    .Replace("{pxmax}", config.PanelXMax).Replace("{pymin}", config.PanelYMin)
+                    .Replace("{pymax}", config.PanelYMax);
                 
                 var blackListTemp = new List<string>();
 
-                foreach (var item in _config.BlackList)
+                foreach (var item in config.BlackList)
                 {
                     if (item.Contains("_"))
                     {
@@ -266,16 +267,16 @@ namespace Oxide.Plugins
                     blackListTemp.Add($"{itemDefinition.itemid}_{itemDefinition.displayName.translated}");
                 }
 
-                _config.BlackList = blackListTemp.ToArray();
+                config.BlackList = blackListTemp.ToArray();
             }
 
             LoadData();
             LoadPermissions();
         }
 
-        protected override void LoadDefaultConfig() => _config = Configuration.DefaultConfig();
+        protected override void LoadDefaultConfig() => config = Configuration.DefaultConfig();
         
-        protected override void SaveConfig() => Config.WriteObject(_config);
+        protected override void SaveConfig() => Config.WriteObject(config);
 
         #endregion
 
@@ -421,7 +422,7 @@ namespace Oxide.Plugins
 
             var playersZones = ZoneManager.Call<string[]>("GetPlayerZoneIDs", player);
 
-            if (_storedData.Hotels.Any(hotel => playersZones.Contains(hotel.hotelName)))
+            if (storedData.Hotels.Any(hotel => playersZones.Contains(hotel.hotelName)))
             {
                 return false;
             }
@@ -437,13 +438,13 @@ namespace Oxide.Plugins
 
             var playersZones = ZoneManager.Call<string[]>("GetPlayerZoneIDs", player);
 
-            var targetHotel = _storedData.Hotels.FirstOrDefault(hotel => playersZones.Contains(hotel.hotelName));
+            var targetHotel = storedData.Hotels.FirstOrDefault(hotel => playersZones.Contains(hotel.hotelName));
 
             if (targetHotel == null) return null;
 
-            if (_config.OpenDoorPlayerGui)
+            if (config.OpenDoorPlayerGui)
                 RefreshPlayerHotelGui(player, targetHotel);
-            if (_config.OpenDoorShowRoom)
+            if (config.OpenDoorShowRoom)
                 ShowPlayerRoom(player, targetHotel);
 
             if (!targetHotel.enabled)
@@ -501,15 +502,15 @@ namespace Oxide.Plugins
             return true;
         }
         
-        private static void LoadData()
+        private void LoadData()
         {
             try
             {
-                _storedData = Interface.GetMod().DataFileSystem.ReadObject<StoredData>("Hotel");
+                storedData = Interface.GetMod().DataFileSystem.ReadObject<StoredData>("Hotel");
             }
-            catch
+            catch(Exception e)
             {
-                _storedData = new StoredData();
+                storedData = new StoredData();
             }
         }
 
@@ -520,34 +521,54 @@ namespace Oxide.Plugins
 
         void OnEnterZone(string zoneId, BasePlayer player)
         {
-            foreach (var hotel in _storedData.Hotels.Where(hotel => hotel.hotelName != null)
+            foreach (var hotel in storedData.Hotels.Where(hotel => hotel.hotelName != null)
                 .Where(hotel => hotel.hotelName == zoneId))
             {
+                //Log in our guest
+                hotelGuests.Add(player.userID, hotel);
                 //TODO: Let each Hotel blacklist items?
                 //var blackList = hotel.BlackList;
                 
-                if (HasBlackListedItems(player, _config.BlackList.ToList()))
+                if (HasBlackListedItems(player, config.BlackList.ToList()))
                 {
                     var zone = ZoneManager.Call<ZoneManager.Zone>("GetZoneByID", hotel.hotelName);
                     ZoneManager.Call("EjectPlayer", player, zone);
-                    RefreshBlackListGui(player, hotel, _config.BlackList.ToList());
+                    RefreshBlackListGui(player, hotel, config.BlackList.ToList());
                     return;
                 }
 
-                if (_config.EnterZoneShowPlayerGui)
+                if (config.EnterZoneShowPlayerGui)
                     RefreshPlayerHotelGui(player, hotel);
-                if (_config.EnterZoneShowRoom)
+                if (config.EnterZoneShowRoom)
                     ShowPlayerRoom(player, hotel);
             }
-            
         }
-        
+
+        void OnExitZone(string ZoneID, BasePlayer player) // Called when a player leaves a zone
+        {
+            hotelGuests.Remove(player.userID);
+        }
+
+        object OnItemPickup(Item item, BasePlayer player)
+        {
+            HotelData hotel;
+            if (!hotelGuests.TryGetValue(player.userID, out hotel)) return null;
+            if (config.BlackList.Any(x => x.Split('_')[0] == item.info.itemid.ToString() || x.Split('_')[1] == item.info.displayName.translated) || HasBlackListedItems(player, config.BlackList.ToList()))
+            {
+                var zone = ZoneManager.Call<ZoneManager.Zone>("GetZoneByID", hotel.hotelName);
+                ZoneManager.Call("EjectPlayer", player, zone);
+                RefreshBlackListGui(player, hotel, config.BlackList.ToList());
+
+            }
+            return null;
+        }
+
         void OnPlayerDisconnected(BasePlayer player)
         {
             if (player == null)
                 return;
 
-            foreach (var hotel in from hotel in _storedData.Hotels
+            foreach (var hotel in from hotel in storedData.Hotels
                                   where hotel.kickHobos
                                   let isInZone = ZoneManager.Call<bool>("IsPlayerInZone", hotel.hotelName, player)
                                   where isInZone
@@ -583,11 +604,11 @@ namespace Oxide.Plugins
         void OnUseNPC(BasePlayer npc, BasePlayer player)
         {
             var npcId = npc.UserIDString;
-            foreach (var hotel in _storedData.Hotels.Where(hotel => hotel.npc != null && hotel.npc == npcId))
+            foreach (var hotel in storedData.Hotels.Where(hotel => hotel.npc != null && hotel.npc == npcId))
             {
-                if (_config.UseNpcShowPlayerGui)
+                if (config.UseNpcShowPlayerGui)
                     RefreshPlayerHotelGui(player, hotel);
-                if (_config.UseNpcShowRoom)
+                if (config.UseNpcShowRoom)
                     ShowPlayerRoom(player, hotel);
             }
         }
@@ -601,7 +622,7 @@ namespace Oxide.Plugins
             try
             {
                 hotelPanelLoaded = InfoPanel.Call<bool>("PanelRegister", "Hotel", "HotelPanel",
-                    JsonConvert.SerializeObject(_config.HotelPanel));
+                    JsonConvert.SerializeObject(config.HotelPanel));
                 if (hotelPanelLoaded)
                     InfoPanel.Call("ShowPanel", "Hotel", "HotelPanel");
             }
@@ -685,12 +706,21 @@ namespace Oxide.Plugins
         {
             var currentTime = LogTime();
 
-            foreach (var hotel in _storedData.Hotels.Where(hotel => hotel.enabled))
+            foreach (var hotel in storedData.Hotels.Where(hotel => hotel.enabled))
             {
                 foreach (var room in hotel.rooms.Values.Where(x =>
-                    x.CheckOutTime() != 0.0 && x.CheckOutTime() < currentTime))
+                    (x.CheckOutTime() != 0.0 && x.CheckOutTime() < currentTime)))
                 {
                     ResetRoom(room);
+                }
+
+                foreach (var room in hotel.rooms.Values.Where(x =>string.IsNullOrEmpty(x.renter)))
+                {
+                    var codeLock = FindCodeLockByPos(room.Pos());
+                    if (codeLock != null)
+                    {
+                        UnlockLock(codeLock);
+                    }
                 }
 
                 CreateMapMarker(hotel);
@@ -888,7 +918,7 @@ namespace Oxide.Plugins
             position.y = Mathf.Ceil(position.y);
             position.z = Mathf.Ceil(position.z);
 
-            foreach (var hotel in _storedData.Hotels)
+            foreach (var hotel in storedData.Hotels)
             {
                 foreach (var room in hotel.rooms.Values.Where(room => room.Pos() == position))
                 {
@@ -901,11 +931,11 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private static bool FindRoomById(string roomId, out HotelData targetHotel, out Room targetRoom)
+        private bool FindRoomById(string roomId, out HotelData targetHotel, out Room targetRoom)
         {
             targetHotel = null;
             targetRoom = null;
-            foreach (var hotel in _storedData.Hotels.Where(hotel => hotel.rooms.ContainsKey(roomId)))
+            foreach (var hotel in storedData.Hotels.Where(hotel => hotel.rooms.ContainsKey(roomId)))
             {
                 targetHotel = hotel;
                 targetRoom = (hotel.rooms)[roomId];
@@ -962,12 +992,21 @@ namespace Oxide.Plugins
 
         private bool HasBlackListedItems(BasePlayer player, List<string> blackList)
         {
+            ItemContainer backpack = null;
+            if (Backpacks && Backpacks.IsLoaded)
+            {
+                backpack = Backpacks.Call<ItemContainer>("API_GetBackpackContainer", player.userID);
+            }
             foreach (var item in blackList)
             {
                 if (player.inventory.GetAmount(int.Parse(item.Split('_')[0])) > 0)
                 {
                     return true;
                 };
+                if (backpack != null && backpack.GetAmount(int.Parse(item.Split('_')[0]),false) > 0)
+                {
+                    return true;
+                }
             }
 
             return false;
@@ -976,7 +1015,7 @@ namespace Oxide.Plugins
         private bool HasAccess(BasePlayer player, string accessRole = "admin")
         {
             if (player == null) return false;
-            return player.net.connection.authLevel >= _config.AuthLevel ||
+            return player.net.connection.authLevel >= config.AuthLevel ||
                    permission.UserHasPermission(player.UserIDString, $"hotel.{accessRole}");
         }
 
@@ -998,7 +1037,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission("hotel.admin", this);
             permission.RegisterPermission("hotel.extend", this);
 
-            foreach (var hotel in _storedData.Hotels.Where(hotel => hotel.p != null))
+            foreach (var hotel in  storedData.Hotels.Where(hotel => hotel.p != null))
             {
                 permission.RegisterPermission("hotel." + hotel.p, this);
             }
@@ -1098,7 +1137,7 @@ namespace Oxide.Plugins
             return ((BaseEntity)target).transform.position;
         }
 
-        private static void ResetRoom(Room room)
+        private void ResetRoom(Room room)
         {
             var codeLock = FindCodeLockByPos(room.Pos());
             if (codeLock == null) return;
@@ -1109,7 +1148,7 @@ namespace Oxide.Plugins
         {
             var door = codeLock.GetParentEntity();
             codeLock.whitelistPlayers = new List<ulong>();
-
+            
             UnlockLock(codeLock);
             CloseDoor(door as Door);
 
@@ -1120,9 +1159,9 @@ namespace Oxide.Plugins
             room.Reset();
         }
 
-        private static void SaveData()
+        private void SaveData()
         {
-            Interface.GetMod().DataFileSystem.WriteObject("Hotel", _storedData);
+            Interface.GetMod().DataFileSystem.WriteObject("Hotel", storedData);
         }
 
         private void ServerRewardsWithdraw(BasePlayer player, int amount)
@@ -1193,7 +1232,7 @@ namespace Oxide.Plugins
                     TimeRemaining = double.MaxValue
                 };
 
-                foreach (var roomTime in _storedData.Hotels.Select(hotel =>
+                foreach (var roomTime in storedData.Hotels.Select(hotel =>
                         GetRoomTimeLeft(hotel, basePlayer.UserIDString))
                     .Where(roomTime => roomTime.TimeRemaining < roomTimeMessage.TimeRemaining))
                 {
@@ -1218,7 +1257,7 @@ namespace Oxide.Plugins
             if (!EditHotel.ContainsKey(player.UserIDString)) return;
             var msg = CreateAdminGuiMsg(player);
             if (msg == string.Empty) return;
-            var send = _config.AdminGuiJson.Replace("{msg}", msg);
+            var send = config.AdminGuiJson.Replace("{msg}", msg);
             CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
                 null, "AddUI", send);
         }
@@ -1229,10 +1268,10 @@ namespace Oxide.Plugins
 
             var msg = CreateBlackListGuiMsg(player,hotel, blackList);
             if (msg == string.Empty) return;
-            var send = _config.BlackListGuiJson.Replace("{msg}", msg);
+            var send = config.BlackListGuiJson.Replace("{msg}", msg);
             CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
                 null, "AddUI", send);
-            playerBlackListGuiTimers[player] = timer.Once(_config.PanelTimeOut, () => RemoveBlackListGui(player));
+            playerBlackListGuiTimers[player] = timer.Once(config.PanelTimeOut, () => RemoveBlackListGui(player));
         }
 
         private string CreateBlackListGuiMsg(BasePlayer player, HotelData hotel, List<string> blackList)
@@ -1262,18 +1301,18 @@ namespace Oxide.Plugins
             {
                 msg = CreatePlayerGuiMsg(player, hotel,
                     GetMsg(PluginMessages.GuiBoardPlayerMaintenance, player.userID));
-                send = _config.PlayerGuiJson.Replace("{msg}", msg);
+                send = config.PlayerGuiJson.Replace("{msg}", msg);
             }
             else
             {
                 msg = CreatePlayerGuiMsg(player, hotel, GetMsg(PluginMessages.GuiBoardPlayer, player.userID));
                 if (msg == string.Empty) return;
-                send = _config.PlayerGuiJson.Replace("{msg}", msg);
+                send = config.PlayerGuiJson.Replace("{msg}", msg);
             }
 
             CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
                 null, "AddUI", send);
-            playerGuiTimers[player] = timer.Once(_config.PanelTimeOut, () => RemovePlayerHotelGui(player));
+            playerGuiTimers[player] = timer.Once(config.PanelTimeOut, () => RemovePlayerHotelGui(player));
         }
 
         private static string ConvertSecondsToBetter(string seconds)
@@ -1491,7 +1530,7 @@ namespace Oxide.Plugins
                 }
 
                 hotelMarker.VendingMachineMapMarker.enabled = true;
-                var markerMsg = _config.MapMarker
+                var markerMsg = config.MapMarker
                     .Replace("{name}", hotel.hotelName)
                     .Replace("{fnum}", hotel.rooms.Values.Count(x => x.renter == null).ToString())
                     .Replace("{rnum}", hotel.rooms.Values.Count.ToString())
@@ -1513,7 +1552,7 @@ namespace Oxide.Plugins
             hotelMarker.GenericMapMarker.alpha = 0.75f;
             hotelMarker.GenericMapMarker.color1 = GetMarkerColor();
             hotelMarker.GenericMapMarker.color2 = GetMarkerColor("color2");
-            hotelMarker.GenericMapMarker.radius = Mathf.Min(2.5f, _config.MapMarkerRadius);
+            hotelMarker.GenericMapMarker.radius = Mathf.Min(2.5f, config.MapMarkerRadius);
             hotelMarker.GenericMapMarker.SendUpdate();
         }
 
@@ -1523,10 +1562,10 @@ namespace Oxide.Plugins
 
             if (id == "color1")
             {
-                return TryParseHtmlString(_config.MapMarkerColor, out color) ? color : Color.magenta;
+                return TryParseHtmlString(config.MapMarkerColor, out color) ? color : Color.magenta;
             }
 
-            return TryParseHtmlString(_config.MapMarkerColorBorder, out color) ? color : Color.magenta;
+            return TryParseHtmlString(config.MapMarkerColorBorder, out color) ? color : Color.magenta;
         }
 
         #endregion
@@ -1550,17 +1589,17 @@ namespace Oxide.Plugins
 
             var editedHotel = EditHotel[player.UserIDString];
 
-            var removeHotel = _storedData.Hotels.FirstOrDefault(hotel =>
+            var removeHotel = storedData.Hotels.FirstOrDefault(hotel =>
                 string.Equals(hotel.hotelName, editedHotel.hotelName, StringComparison.CurrentCultureIgnoreCase));
             if (removeHotel != null)
             {
-                _storedData.Hotels.Remove(removeHotel);
+                storedData.Hotels.Remove(removeHotel);
                 removeHotel.Activate();
             }
 
             editedHotel.Activate();
 
-            _storedData.Hotels.Add(editedHotel);
+            storedData.Hotels.Add(editedHotel);
 
             SaveData();
             LoadPermissions();
@@ -1590,7 +1629,7 @@ namespace Oxide.Plugins
             }
 
             var editedHotel = EditHotel[player.UserIDString];
-            foreach (var hotel in _storedData.Hotels.Where(hotel =>
+            foreach (var hotel in storedData.Hotels.Where(hotel =>
                 string.Equals(hotel.hotelName, editedHotel.hotelName, StringComparison.CurrentCultureIgnoreCase)))
             {
                 hotel.Activate();
@@ -1644,7 +1683,7 @@ namespace Oxide.Plugins
                     case "location":
                         var rad = editedHotel.r ?? "20";
 
-                        var defaultZoneFlags = _config.DefaultZoneFlags;
+                        var defaultZoneFlags = config.DefaultZoneFlags;
                         var zoneArgs = new List<string> { "name", editedHotel.hotelName, "radius", rad };
                         foreach (var defaultZoneFlag in defaultZoneFlags)
                         {
@@ -1872,7 +1911,7 @@ namespace Oxide.Plugins
             }
 
             SendReply(player, "======= Hotel List ======");
-            foreach (HotelData hotel in _storedData.Hotels)
+            foreach (HotelData hotel in storedData.Hotels)
             {
                 SendReply(player, $"{hotel.hotelName} - {hotel.rooms.Count}");
             }
@@ -1900,7 +1939,7 @@ namespace Oxide.Plugins
             }
 
             var hotelName = args[0];
-            foreach (var hotel in _storedData.Hotels.Where(hotel =>
+            foreach (var hotel in storedData.Hotels.Where(hotel =>
                 string.Equals(hotel.hotelName, hotelName, StringComparison.CurrentCultureIgnoreCase)))
             {
                 hotel.Deactivate();
@@ -1957,7 +1996,7 @@ namespace Oxide.Plugins
 
             var hotelName = args[0];
             HotelData targetHotel = null;
-            foreach (var hotel in _storedData.Hotels.Where(hotel =>
+            foreach (var hotel in storedData.Hotels.Where(hotel =>
                 string.Equals(hotel.hotelName, hotelName, StringComparison.CurrentCultureIgnoreCase)))
             {
                 hotel.Deactivate();
@@ -1972,7 +2011,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            _storedData.Hotels.Remove(targetHotel);
+            storedData.Hotels.Remove(targetHotel);
             SaveData();
             SendReply(player, $"Hotel Named: {hotelName} was successfully removed");
         }
@@ -1992,7 +2031,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            _storedData.Hotels = new HashSet<HotelData>();
+            storedData.Hotels = new HashSet<HotelData>();
             SaveData();
             SendReply(player, "Hotels were all deleted");
         }
@@ -2015,7 +2054,7 @@ namespace Oxide.Plugins
             var hotelName = args[0];
             var hotelFound = false;
 
-            foreach (var hotel in _storedData.Hotels.Where(hotel =>
+            foreach (var hotel in storedData.Hotels.Where(hotel =>
                 string.Equals(hotel.hotelName, hotelName, StringComparison.CurrentCultureIgnoreCase)))
             {
                 hotelFound = true;
@@ -2086,7 +2125,7 @@ namespace Oxide.Plugins
         void CmdChatRooms(BasePlayer player, string command, string[] args)
         {
             var hotelFound = false;
-            foreach (var hotel in _storedData.Hotels)
+            foreach (var hotel in storedData.Hotels)
             {
                 foreach (var pair in hotel.rooms.Where(pair => pair.Value.renter == player.UserIDString))
                 {
@@ -2253,7 +2292,7 @@ namespace Oxide.Plugins
 
             var hotelName = args[0];
 
-            if (_storedData.Hotels.Any(x =>
+            if (storedData.Hotels.Any(x =>
                 string.Equals(x.hotelName, hotelName, StringComparison.CurrentCultureIgnoreCase)))
             {
                 SendReply(player,
@@ -2499,6 +2538,11 @@ namespace Oxide.Plugins
 
             #region Constructors
 
+            public DeployableItem()
+            {
+                
+            }
+
             public DeployableItem(BaseEntity deployable)
             {
                 prefabName = StringPool.Get(deployable.prefabID);
@@ -2536,7 +2580,7 @@ namespace Oxide.Plugins
             #endregion
         }
 
-        class StoredData
+        public class StoredData
         {
             #region Constructors
 
