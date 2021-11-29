@@ -465,14 +465,14 @@ namespace Oxide.Plugins
 
             if (!targetHotel.enabled)
             {
-                SendReply(player, GetMsg("MessageMaintenance", player.userID));
+                SendReply(player, GetMsg(PluginMessages.MessageMaintenance, player.userID));
                 return false;
             }
 
             var room = FindRoomByDoorAndHotel(targetHotel, parentEntity);
             if (room == null)
             {
-                SendReply(player, GetMsg("MessageErrorUnavailableRoom", player.userID));
+                SendReply(player, GetMsg(PluginMessages.MessageErrorUnavailableRoom, player.userID));
                 return false;
             }
 
@@ -510,7 +510,7 @@ namespace Oxide.Plugins
 
             if (room.renter != player.UserIDString)
             {
-                SendReply(player, GetMsg("MessageErrorNotAllowedToEnter", player.userID));
+                SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowedToEnter, player.userID));
                 return false;
             }
 
@@ -1390,7 +1390,7 @@ namespace Oxide.Plugins
 
                 if (playersRoom != null)
                 {
-                    roomGui = GetMsg("GUIBoardPlayerRoom", player.userID)
+                    roomGui = GetMsg(PluginMessages.GuiBoardPlayerRoom, player.userID)
                         .Replace("{jdate}", ConvertSecondsToDate(playersRoom.checkingTime))
                         .Replace("{rid}", playersRoom.roomId)
                         .Replace("{timeleft}",
@@ -1428,7 +1428,7 @@ namespace Oxide.Plugins
 
             if (numberRooms == 0)
             {
-                return GetMsg("GUIBoardAdmin", player.userID)
+                return GetMsg(PluginMessages.GuiBoardAdmin, player.userID)
                     .Replace("{name}", hotelData.hotelName)
                     .Replace("{loc}", loc)
                     .Replace("{hrad}", hotelRadius)
@@ -1450,7 +1450,7 @@ namespace Oxide.Plugins
             var occupiedCount = hotelData.rooms?.Values.Count(x => x.renter != null);
             var freeCount = hotelData.rooms?.Values.Count(x => x.renter == null);
 
-            return GetMsg("GUIBoardAdmin", player.userID)
+            return GetMsg(PluginMessages.GuiBoardAdmin, player.userID)
                 .Replace("{name}", hotelData.hotelName)
                 .Replace("{loc}", loc)
                 .Replace("{hrad}", hotelRadius)
@@ -1654,7 +1654,7 @@ namespace Oxide.Plugins
         {
             if (!HasAccess(player))
             {
-                SendReply(player, GetMsg("MessageErrorNotAllowed", player.userID));
+                SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowed, player.userID));
                 return;
             }
 
@@ -1684,7 +1684,7 @@ namespace Oxide.Plugins
         {
             if (!HasAccess(player))
             {
-                SendReply(player, GetMsg("MessageErrorNotAllowed", player.userID));
+                SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowed, player.userID));
                 return;
             }
 
@@ -1942,7 +1942,7 @@ namespace Oxide.Plugins
         {
             if (!HasAccess(player))
             {
-                SendReply(player, GetMsg("MessageErrorNotAllowed", player.userID));
+                SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowed, player.userID));
                 return;
             }
 
@@ -1984,19 +1984,19 @@ namespace Oxide.Plugins
         {
             if (!HasAccess(player))
             {
-                SendReply(player, GetMsg("MessageErrorNotAllowed", player.userID));
+                SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowed, player.userID));
                 return;
             }
 
             if (EditHotel.ContainsKey(player.UserIDString))
             {
-                SendReply(player, GetMsg("MessageAlreadyEditing", player.userID));
+                SendReply(player, GetMsg(PluginMessages.MessageAlreadyEditing, player.userID));
                 return;
             }
 
             if (args.Length == 0)
             {
-                SendReply(player, GetMsg("MessageHotelEditHelp", player.userID));
+                SendReply(player, GetMsg(PluginMessages.MessageHotelEditHelp, player.userID));
                 return;
             }
 
