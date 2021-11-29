@@ -10,6 +10,7 @@ using System.Linq;
 using Facepunch;
 using Newtonsoft.Json;
 using Oxide.Core;
+using Oxide.Core.Libraries.Covalence;
 using Oxide.Core.Plugins;
 using UnityEngine;
 
@@ -17,7 +18,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.18")]
+    [Info("Hotel", "Shady14u", "2.0.19")]
     [Description("Complete Hotel System for Rust.")]
     public class Hotel : RustPlugin
     {
@@ -284,6 +285,11 @@ namespace Oxide.Plugins
 
         private static class PluginMessages
         {
+            public const string MessageHotelDisableHelp = "MessageHotelDisableHelp";
+            public const string MessagePlayerIsRenter = "MessagePlayerIsRenter";
+            public const string MessagePlayerNotRenter = "MessagePlayerNotRenter";
+            public const string MessageHotelEnableHelp = "MessageHotelEnableHelp";
+            public const string MessageErrorPlayerNotFound = "MessageErrorPlayerNotFound";
             public const string MessageAlreadyEditing = "MessageAlreadyEditing";
             public const string MessageNoHotelHelp = "MessageNoHotelHelp";
             public const string MessageHotelNewHelp = "MessageHotelNewHelp";
@@ -337,6 +343,16 @@ namespace Oxide.Plugins
         {
             lang.RegisterMessages(new Dictionary<string, string>
             {
+                [PluginMessages.MessageHotelDisableHelp] =
+                    "You must enter the name/id of the person you want to disable renting hotels: <color=green>/hotel_disable \"Player Name/Id\"</color>",
+                [PluginMessages.MessagePlayerNotRenter] =
+                    "Player <color=green>{playerName}</color> revoked from the <color=green>hotel.renter</color> permission.",
+                [PluginMessages.MessagePlayerIsRenter] =
+                    "Player <color=green>{playerName}</color> granted the <color=green>hotel.renter</color> permission.",
+                [PluginMessages.MessageHotelEnableHelp] =
+                   "You must enter the name/id of the person you want to enable renting hotels: <color=green>/hotel_enable \"Player Name/Id\"</color>",
+                [PluginMessages.MessageErrorPlayerNotFound] =
+                    "Player was not found.",
                 [PluginMessages.MessageAlreadyEditing] =
                     "You are already editing a hotel. You must close or save it first.",
                 [PluginMessages.MessageNoHotelHelp] =
@@ -510,7 +526,9 @@ namespace Oxide.Plugins
             }
             catch(Exception e)
             {
-                storedData = new StoredData();
+                Puts(e.Message);
+                Puts(e.StackTrace);
+                //storedData = new StoredData();
             }
         }
 
@@ -518,7 +536,7 @@ namespace Oxide.Plugins
         {
             SaveData();
         }
-
+        
         void OnEnterZone(string zoneId, BasePlayer player)
         {
             foreach (var hotel in storedData.Hotels.Where(hotel => hotel.hotelName != null)
@@ -931,6 +949,23 @@ namespace Oxide.Plugins
             return false;
         }
 
+        private IPlayer FindPlayer(string nameOrIdOrIp)
+        {
+            foreach (var activePlayer in covalence.Players.All)
+            {
+                if (activePlayer.Id == nameOrIdOrIp)
+                    return activePlayer;
+                if (activePlayer.Name.Contains(nameOrIdOrIp))
+                    return activePlayer;
+                if (activePlayer.Name.ToLower().Contains(nameOrIdOrIp.ToLower()))
+                    return activePlayer;
+                if (activePlayer.Address == nameOrIdOrIp)
+                    return activePlayer;
+            }
+
+            return null;
+        }
+
         private bool FindRoomById(string roomId, out HotelData targetHotel, out Room targetRoom)
         {
             targetHotel = null;
@@ -1036,8 +1071,9 @@ namespace Oxide.Plugins
         {
             permission.RegisterPermission("hotel.admin", this);
             permission.RegisterPermission("hotel.extend", this);
+            permission.RegisterPermission("hotel.renter", this);
 
-            foreach (var hotel in  storedData.Hotels.Where(hotel => hotel.p != null))
+            foreach (var hotel in  storedData.Hotels.Where(hotel => hotel.p != null && hotel.p.ToLower() != "renter"))
             {
                 permission.RegisterPermission("hotel." + hotel.p, this);
             }
@@ -1917,6 +1953,32 @@ namespace Oxide.Plugins
             }
         }
 
+        [ChatCommand("hotel_disable")]
+        void CmdChatHotelDisable(BasePlayer player, string command, string[] args)
+        {
+            if (!HasAccess(player))
+            {
+                SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowed, player.userID));
+                return;
+            }
+
+            if (args.Length == 0)
+            {
+                SendReply(player, GetMsg(PluginMessages.MessageHotelDisableHelp, player.userID));
+                return;
+            }
+
+            var renter = FindPlayer(args[0]);
+            if (renter == null)
+            {
+                SendReply(player, GetMsg(PluginMessages.MessageErrorPlayerNotFound, player.userID));
+                return;
+            }
+            SetPlayerAsRenter(args[0], false);
+            SendReply(player, GetMsg(PluginMessages.MessagePlayerNotRenter, player.userID).Replace("{playerName}", renter.Name));
+
+        }
+
         [ChatCommand("hotel_edit")]
         void CmdChatHotelEdit(BasePlayer player, string command, string[] args)
         {
@@ -1973,67 +2035,46 @@ namespace Oxide.Plugins
             RefreshAdminHotelGui(player);
         }
 
-        [ChatCommand("hotel_remove")]
-        void CmdChatHotelRemove(BasePlayer player, string command, string[] args)
+        [ChatCommand("hotel_enable")]
+        void CmdChatHotelEnable(BasePlayer player, string command, string[] args)
         {
             if (!HasAccess(player))
             {
                 SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowed, player.userID));
                 return;
             }
-
-            if (EditHotel.ContainsKey(player.UserIDString))
-            {
-                SendReply(player, GetMsg(PluginMessages.MessageAlreadyEditing, player.userID));
-                return;
-            }
-
+            
             if (args.Length == 0)
             {
-                SendReply(player, GetMsg(PluginMessages.MessageHotelEditHelp, player.userID));
+                SendReply(player, GetMsg(PluginMessages.MessageHotelEnableHelp, player.userID));
                 return;
             }
-
-            var hotelName = args[0];
-            HotelData targetHotel = null;
-            foreach (var hotel in storedData.Hotels.Where(hotel =>
-                string.Equals(hotel.hotelName, hotelName, StringComparison.CurrentCultureIgnoreCase)))
+            
+            var renter = FindPlayer(args[0]);
+            if (renter == null)
             {
-                hotel.Deactivate();
-                targetHotel = hotel;
-                break;
-            }
-
-            if (targetHotel == null)
-            {
-                SendReply(player,
-                    string.Format(GetMsg(PluginMessages.MessageErrorEditDoesNotExist, player.userID), args[0]));
+                SendReply(player, GetMsg(PluginMessages.MessageErrorPlayerNotFound, player.userID));
                 return;
             }
+            SetPlayerAsRenter(args[0], true);
+            SendReply(player, GetMsg(PluginMessages.MessagePlayerIsRenter, player.userID).Replace("{playerName}",renter.Name));
 
-            storedData.Hotels.Remove(targetHotel);
-            SaveData();
-            SendReply(player, $"Hotel Named: {hotelName} was successfully removed");
         }
 
-        [ChatCommand("hotel_reset")]
-        void CmdChatHotelReset(BasePlayer player, string command, string[] args)
+        private void SetPlayerAsRenter(string playerName, bool isRenter)
         {
-            if (!HasAccess(player))
+            
+            if (isRenter)
             {
-                SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowed, player.userID));
-                return;
-            }
+                //TODO: Find player and add hotel.renter permission
+                Server.Command($"oxide.grant user {playerName} hotel.renter");
 
-            if (EditHotel.ContainsKey(player.UserIDString))
+            }
+            else
             {
-                SendReply(player, GetMsg(PluginMessages.MessageAlreadyEditing, player.userID));
-                return;
+                //TODO: Find player and remove hotel.renter permission
+                Server.Command($"oxide.revoke user {playerName} hotel.renter");
             }
-
-            storedData.Hotels = new HashSet<HotelData>();
-            SaveData();
-            SendReply(player, "Hotels were all deleted");
         }
 
         [ChatCommand("hotel_extend")]
@@ -2119,6 +2160,69 @@ namespace Oxide.Plugins
             }
 
             SaveData();
+        }
+
+        [ChatCommand("hotel_reset")]
+        void CmdChatHotelReset(BasePlayer player, string command, string[] args)
+        {
+            if (!HasAccess(player))
+            {
+                SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowed, player.userID));
+                return;
+            }
+
+            if (EditHotel.ContainsKey(player.UserIDString))
+            {
+                SendReply(player, GetMsg(PluginMessages.MessageAlreadyEditing, player.userID));
+                return;
+            }
+
+            storedData.Hotels = new HashSet<HotelData>();
+            SaveData();
+            SendReply(player, "Hotels were all deleted");
+        }
+
+        [ChatCommand("hotel_remove")]
+        void CmdChatHotelRemove(BasePlayer player, string command, string[] args)
+        {
+            if (!HasAccess(player))
+            {
+                SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowed, player.userID));
+                return;
+            }
+
+            if (EditHotel.ContainsKey(player.UserIDString))
+            {
+                SendReply(player, GetMsg(PluginMessages.MessageAlreadyEditing, player.userID));
+                return;
+            }
+
+            if (args.Length == 0)
+            {
+                SendReply(player, GetMsg(PluginMessages.MessageHotelEditHelp, player.userID));
+                return;
+            }
+
+            var hotelName = args[0];
+            HotelData targetHotel = null;
+            foreach (var hotel in storedData.Hotels.Where(hotel =>
+                string.Equals(hotel.hotelName, hotelName, StringComparison.CurrentCultureIgnoreCase)))
+            {
+                hotel.Deactivate();
+                targetHotel = hotel;
+                break;
+            }
+
+            if (targetHotel == null)
+            {
+                SendReply(player,
+                    string.Format(GetMsg(PluginMessages.MessageErrorEditDoesNotExist, player.userID), args[0]));
+                return;
+            }
+
+            storedData.Hotels.Remove(targetHotel);
+            SaveData();
+            SendReply(player, $"Hotel Named: {hotelName} was successfully removed");
         }
 
         [ChatCommand("rooms")]
