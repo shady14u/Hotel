@@ -361,7 +361,7 @@ namespace Oxide.Plugins
                 [PluginMessages.MessageCouldNotFindToExtend] = "Could not find your room to extend, in the {0} hotel",
                 [PluginMessages.MessageHotelExtendHelp] =
                     "You must enter the name of the hotel you want to extend your stay at: <color=green>/hotel_extend \"Hotel Name\"</color>",
-                [PluginMessages.MessageErrorAlreadyGotRoom] = "You already have a room in this hotel and !",
+                [PluginMessages.MessageErrorAlreadyGotRoom] = "You already have a room in this hotel!",
                 [PluginMessages.MessageErrorPermissionsNeeded] =
                     "You must have the <color=purple>{0}</color> permission to rent a room here",
                 [PluginMessages.MessageRentUnlimited] = "You now have access to this room for an unlimited time",
