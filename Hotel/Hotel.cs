@@ -18,7 +18,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.2")]
+    [Info("Hotel", "Shady14u", "2.0.20")]
     [Description("Complete Hotel System for Rust.")]
     public class Hotel : RustPlugin
     {
