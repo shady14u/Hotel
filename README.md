@@ -89,6 +89,24 @@ I recommend using:
 
 >Just be mindful of sleepers in your hotel, if the heli was to shoot rockets at it will they live, (do you need PvE God, PvP God, or SleepGod On)?
 
+## GUI Tokens:
+These tokens can be used in the GUI and get replaced when rendered with values
+- `{jdate}` - date player started renting
+- `{rid}` - room Id
+- `{timeleft}` - time left on the room
+- `{name}` - hotel name
+- `{loc}` - hotel location
+- `{hrad}` - hotel radius
+- `{rrad}` - room radius
+- `{rnum}` - number of rooms
+- `{onum}` - number of occupied
+- `{fnum}` - number of free rooms
+- `{price}` - price of the room
+- `{currency}` - currency used by hotel
+- `{durSeconds}` - rent duration in seconds
+- `{durHours}` - rent duration in hours
+- `{durDays}` - rent duration in days
+
 Config File:
 ```
 {
