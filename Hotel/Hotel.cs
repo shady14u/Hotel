@@ -18,7 +18,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.19")]
+    [Info("Hotel", "Shady14u", "2.0.2")]
     [Description("Complete Hotel System for Rust.")]
     public class Hotel : RustPlugin
     {
@@ -395,7 +395,7 @@ namespace Oxide.Plugins
                     "\t\t\t\t\t<color=green>HOTEL MANAGER</color>\n\n<color=cyan>Hotel Name:\t\t{name}</color>\n<color=grey>Hotel Location:</color>\t{loc}\n<color=orange>Hotel Radius:\t\t{hrad}</color>\t<color=yellow>Rooms Radius:\t{rrad}</color>\n<color=blue>Rooms:\t{rnum}</color>\t\t<color=red>Occupied:\t{onum}</color>\t\t<color=green>Vacant:\t{fnum}</color>\n<color=cyan>Rent Price:\t{rp}\t</color><color=purple>{rc}</color>\n<color=grey>Duration:\t{rd} Seconds</color>\n<color=orange>Kick Hobos:\t{kh}</color>\t\t<color=yellow>NPC Id:\t{npcId}</color>\n<color=blue>Show Marker:\t{sm}</color>\n<color=red>Permission:\t{p}</color>",
                 [PluginMessages.GuiBoardBlackList] ="<color=blue>You cannot enter {name} Hotel with any of the following items:</color>\r\n<size=10>{blacklist}</size>",
                 [PluginMessages.GuiBoardPlayer] =
-                    "\t\t\t\t\t\t\t\t\t\t<color=yellow><size=16>{name}</size></color>\n\t\t\t\t\t<color=yellow><size=12>Location: ({loc})</size></color>\n\t\t\t\t\t\t<color=blue>Rooms:\t\t\t\t{rnum}</color>\n\t\t\t\t\t\t<color=red>Occupied:\t\t\t{onum}</color>\n\t\t\t\t\t\t<color=green>Vacant:\t\t\t\t{fnum}</color>",
+                    "\t\t\t\t\t\t\t\t\t\t<color=yellow><size=16>{name}</size></color>\n\t\t\t\t\t<color=yellow><size=12>Location: ({loc})</size></color>\n\t\t<color=blue>Rooms:\t\t{rnum}</color>\t\t<color=green>Price:\t{price} {currency} per {durHours} hours </color>\n\t\t<color=red>Occupied:\t{onum}</color>\n\t\t<color=green>Vacant:\t\t{fnum}</color>",
                 [PluginMessages.GuiBoardPlayerRoom] =
                     "\n\t\t\t\t\t\t\t\t<color=yellow><size=14>Your Room</size></color>\n\t\t\t\t\t<color=blue><size=12>Id:\t\t\t\t{rid}</size></color>\n\t\t\t\t\t<color=orange><size=12>Joined:\t\t\t{jdate}</size></color>\n\t\t\t\t\t<color=cyan><size=12>Time Left:\t\t{timeleft}</size></color>",
                 [PluginMessages.GuiBoardPlayerMaintenance] =
@@ -580,6 +580,11 @@ namespace Oxide.Plugins
             }
             return null;
         }
+        
+        void OnPlayerConnected(BasePlayer player)
+        {
+            UpdateHotelCounter();
+        }
 
         void OnPlayerDisconnected(BasePlayer player)
         {
@@ -601,6 +606,14 @@ namespace Oxide.Plugins
                 var zone = ZoneManager.Call<ZoneManager.Zone>("GetZoneByID", hotel.hotelName);
                 ZoneManager.Call("EjectPlayer", player, zone);
                 return;
+            }
+        }
+        
+        void Loaded()
+        {
+            if (InfoPanel && InfoPanel.IsLoaded)
+            {
+                InfoPanelInit();
             }
         }
 
@@ -1258,7 +1271,12 @@ namespace Oxide.Plugins
 
         private void UpdateHotelCounter()
         {
-            if (!InfoPanel || !InfoPanel.IsLoaded || !hotelPanelLoaded) return;
+            if (!InfoPanel || !InfoPanel.IsLoaded) return;
+
+            if (!hotelPanelLoaded)
+            {
+                AddHotelPanel();
+            }
 
             foreach (var basePlayer in BasePlayer.activePlayerList)
             {
@@ -1280,6 +1298,7 @@ namespace Oxide.Plugins
             }
 
             InfoPanel.Call("RefreshPanel", "Hotel", "HotelPanel");
+            
         }
 
         #endregion
@@ -1410,7 +1429,12 @@ namespace Oxide.Plugins
                                 .Replace("{rrad}", roomRadius)
                                 .Replace("{rnum}", roomCount.ToString())
                                 .Replace("{onum}", occupiedCount.ToString())
-                                .Replace("{fnum}", freeCount.ToString())
+                                .Replace("{price}", hotel.e)
+                                .Replace("{currency}", hotel.currency)
+                                .Replace("{durSeconds}", hotel.rd)
+                                .Replace("{durHours}", (int.Parse(hotel.rd??"0")/3600).ToString("F1"))
+                                .Replace("{durDays}", (int.Parse(hotel.rd??"0")/86400).ToString("F1"))
+                            .Replace("{fnum}", freeCount.ToString())
                             + roomGui;
 
             return newGuiMsg;
