@@ -12,13 +12,14 @@ using Newtonsoft.Json;
 using Oxide.Core;
 using Oxide.Core.Libraries.Covalence;
 using Oxide.Core.Plugins;
+using Oxide.Game.Rust.Cui;
 using UnityEngine;
 
 #endregion
 
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.20")]
+    [Info("Hotel", "Shady14u", "2.0.21")]
     [Description("Complete Hotel System for Rust.")]
     public class Hotel : RustPlugin
     {
@@ -49,9 +50,14 @@ namespace Oxide.Plugins
         private static Dictionary<string, HotelMarker> HotelMarkers = new Dictionary<string, HotelMarker>(); 
         private static readonly Vector3 Vector3Up = new Vector3(0f, 0.1f, 0f);
         private static readonly Vector3 Vector3Up2 = new Vector3(0f, 1.5f, 0f);
-        
-        
+
+
         #endregion
+
+        void Init()
+        {
+            AddCovalenceCommand("hotelextend", "HotelExtend");
+        }
 
         #region Config
 
@@ -205,16 +211,15 @@ namespace Oxide.Plugins
                             {""type"":""RectTransform"",""anchormin"": ""{xmin} {ymin}"", ""anchormax"": ""{xmax} {ymax}""}]},{""parent"": ""HotelAdmin"",""components"":
                             [{""type"":""UnityEngine.UI.Text"", ""text"":""{msg}"",""fontSize"":15, ""align"": ""MiddleLeft""},{""type"":""RectTransform"",
                             ""anchormin"": ""0.1 0.1"",""anchormax"": ""1 1"" }]}]",
-
                     PlayerGuiJson = @"[{""name"": ""HotelPlayer"",""parent"": ""Overlay"",""components"":[{""type"":""UnityEngine.UI.Image"",""color"":""0.1 0.1 0.1 0.7"",},
                             {""type"":""RectTransform"",""anchormin"": ""{pxmin} {pymin}"",""anchormax"": ""{pxmax} {pymax}""}]},{""parent"": ""HotelPlayer"",""components"":
                             [{""type"":""UnityEngine.UI.Text"",""text"":""{msg}"",""fontSize"":15,""align"": ""MiddleLeft"",},{""type"":""RectTransform"",
-                            ""anchormin"": ""0.1 0.1"",""anchormax"": ""1 1""}]}]",
+                            ""anchormin"": ""0.1 0.1"",""anchormax"": ""1 0.8""}]}]",
                     BlackListGuiJson = @"[{""name"": ""HotelBlackList"",""parent"": ""Overlay"",""components"":[{""type"":""UnityEngine.UI.Image"",""color"":""0.1 0.1 0.1 0.7"",},
                             {""type"":""RectTransform"",""anchormin"": ""{pxmin} {pymin}"",""anchormax"": ""{pxmax} {pymax}""}]},{""parent"": ""HotelBlackList"",""components"":
                             [{""type"":""UnityEngine.UI.Text"",""text"":""{msg}"",""fontSize"":15,""align"": ""MiddleLeft"",},{""type"":""RectTransform"",
                             ""anchormin"": ""0.1 0.1"",""anchormax"": ""1 1""}]}]",
-                    MapMarker = "\t\t\t{name} Hotel\r\n{fnum} of {rnum} Rooms Available\r\n{rp} {rc} per {rd} Seconds",
+                    MapMarker = "\t\t\t{name} Hotel\r\n{fnum} of {rnum} Rooms Available\r\n{rp} {rc} per {durHours} hours",
                     MapMarkerColor = "#710AC1",
                     MapMarkerColorBorder = "#5FCEA8",
                     MapMarkerRadius = 0.25f,
@@ -1313,8 +1318,7 @@ namespace Oxide.Plugins
             var msg = CreateAdminGuiMsg(player);
             if (msg == string.Empty) return;
             var send = config.AdminGuiJson.Replace("{msg}", msg);
-            CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
-                null, "AddUI", send);
+            CuiHelper.AddUi(player, send);
         }
 
         private void RefreshBlackListGui(BasePlayer player,HotelData hotel, List<string> blackList)
@@ -1324,8 +1328,7 @@ namespace Oxide.Plugins
             var msg = CreateBlackListGuiMsg(player,hotel, blackList);
             if (msg == string.Empty) return;
             var send = config.BlackListGuiJson.Replace("{msg}", msg);
-            CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
-                null, "AddUI", send);
+            CuiHelper.AddUi(player, send);
             playerBlackListGuiTimers[player] = timer.Once(config.PanelTimeOut, () => RemoveBlackListGui(player));
         }
 
@@ -1342,8 +1345,7 @@ namespace Oxide.Plugins
             if (playerBlackListGuiTimers[player] != null)
                 playerBlackListGuiTimers[player].Destroy();
             
-            CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
-                null, "DestroyUI", "HotelBlackList");
+            CuiHelper.DestroyUi(player, "HotelBlackList");
         }
 
         private void RefreshPlayerHotelGui(BasePlayer player, HotelData hotel)
@@ -1357,16 +1359,31 @@ namespace Oxide.Plugins
                 msg = CreatePlayerGuiMsg(player, hotel,
                     GetMsg(PluginMessages.GuiBoardPlayerMaintenance, player.userID));
                 send = config.PlayerGuiJson.Replace("{msg}", msg);
+                CuiHelper.AddUi(player, send);
             }
             else
             {
                 msg = CreatePlayerGuiMsg(player, hotel, GetMsg(PluginMessages.GuiBoardPlayer, player.userID));
                 if (msg == string.Empty) return;
                 send = config.PlayerGuiJson.Replace("{msg}", msg);
-            }
 
-            CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
-                null, "AddUI", send);
+                CuiHelper.AddUi(player, send);
+
+                if (hotel.rooms.Values.FirstOrDefault(x => x.renter == player.UserIDString) != null)
+                {
+                    //if Player can extend add button here
+                    var extendContainer = new CuiElementContainer();
+                    extendContainer.Add(new CuiButton
+                    {
+                        Button = { Color = ".3 .2 .3 1", Command = $"hotelextend {hotel.hotelName}", FadeIn = 0.4f },
+                        RectTransform = { AnchorMin = "0.7 0.8", AnchorMax = "1 1" },
+                        Text = { Text = "Extend your Stay", FontSize = 12, Align = TextAnchor.MiddleCenter }
+                    }, "HotelPlayer");
+
+                    CuiHelper.AddUi(player, extendContainer);
+                }
+            }
+            
             playerGuiTimers[player] = timer.Once(config.PanelTimeOut, () => RemovePlayerHotelGui(player));
         }
 
@@ -1495,8 +1512,7 @@ namespace Oxide.Plugins
 
         private void RemoveAdminHotelGui(BasePlayer player)
         {
-            CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
-                null, "DestroyUI", "HotelAdmin");
+            CuiHelper.DestroyUi(player, "HotelAdmin");
         }
 
         private void RemovePlayerHotelGui(BasePlayer player)
@@ -1504,8 +1520,8 @@ namespace Oxide.Plugins
             if (player == null || player.net == null) return;
             if (playerGuiTimers[player] != null)
                 playerGuiTimers[player].Destroy();
-            CommunityEntity.ServerInstance.ClientRPCEx(new Network.SendInfo { connection = player.net.connection },
-                null, "DestroyUI", "HotelPlayer");
+          
+            CuiHelper.DestroyUi(player, "HotelPlayer");
         }
 
         private void ShowHotelGrid(BasePlayer player)
@@ -1593,11 +1609,18 @@ namespace Oxide.Plugins
                 var markerMsg = config.MapMarker
                     .Replace("{name}", hotel.hotelName)
                     .Replace("{fnum}", hotel.rooms.Values.Count(x => x.renter == null).ToString())
+                    .Replace("{onum}", hotel.rooms.Values.Count(x => x.renter != null).ToString())
                     .Replace("{rnum}", hotel.rooms.Values.Count.ToString())
                     .Replace("{rp}", hotel.e)
+                    .Replace("{price}", hotel.e)
+                    .Replace("{currency}",
+                        hotel.currency == "0" ? "Economics" : hotel.currency == "1" ? "Server Rewards" : hotel.currency)
                     .Replace("{rc}",
                         hotel.currency == "0" ? "Economics" : hotel.currency == "1" ? "Server Rewards" : hotel.currency)
-                    .Replace("{rd}", hotel.rd);
+                    .Replace("{rd}", hotel.rd)
+                    .Replace("{durHours}", (int.Parse(hotel.rd??"0")/3600).ToString("F1"))
+                    .Replace("{durDays}", (int.Parse(hotel.rd??"0")/86400).ToString("F1"))
+                    .Replace("{durSeconds}", hotel.rd);
 
                 if (!string.IsNullOrEmpty(hotel.p))
                 {
@@ -2099,6 +2122,14 @@ namespace Oxide.Plugins
                 //TODO: Find player and remove hotel.renter permission
                 Server.Command($"oxide.revoke user {playerName} hotel.renter");
             }
+        }
+
+        [Command("hotelextend")]
+        void HotelExtend(IPlayer iplayer, string command, string[] args)
+        {
+            Puts("In Hotel Extends");
+            var player = iplayer.Object as BasePlayer;
+            CmdChatHotelExtend(player, null,args);
         }
 
         [ChatCommand("hotel_extend")]
