@@ -19,7 +19,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.21")]
+    [Info("Hotel", "Shady14u", "2.0.22")]
     [Description("Complete Hotel System for Rust.")]
     public class Hotel : RustPlugin
     {
@@ -1375,7 +1375,7 @@ namespace Oxide.Plugins
                     var extendContainer = new CuiElementContainer();
                     extendContainer.Add(new CuiButton
                     {
-                        Button = { Color = ".3 .2 .3 1", Command = $"hotelextend {hotel.hotelName}", FadeIn = 0.4f },
+                        Button = { Color = ".3 .2 .3 1", Command = $"hotelextend '{hotel.hotelName}' ", FadeIn = 0.4f },
                         RectTransform = { AnchorMin = "0.7 0.8", AnchorMax = "1 1" },
                         Text = { Text = "Extend your Stay", FontSize = 12, Align = TextAnchor.MiddleCenter }
                     }, "HotelPlayer");
@@ -2127,8 +2127,8 @@ namespace Oxide.Plugins
         [Command("hotelextend")]
         void HotelExtend(IPlayer iplayer, string command, string[] args)
         {
-            Puts("In Hotel Extends");
             var player = iplayer.Object as BasePlayer;
+            args[0] = args[0].Replace("'","");
             CmdChatHotelExtend(player, null,args);
         }
 
