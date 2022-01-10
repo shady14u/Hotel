@@ -258,6 +258,11 @@ namespace Oxide.Plugins
                     .Replace("{pymax}", config.PanelYMax);
                 
                 var blackListTemp = new List<string>();
+                
+                if (config.BlackList == null)
+                {
+                    config.BlackList = blackListTemp.ToArray();
+                }
 
                 foreach (var item in config.BlackList)
                 {
@@ -1368,8 +1373,8 @@ namespace Oxide.Plugins
                 send = config.PlayerGuiJson.Replace("{msg}", msg);
 
                 CuiHelper.AddUi(player, send);
-
-                if (hotel.rooms.Values.FirstOrDefault(x => x.renter == player.UserIDString) != null)
+                
+                if (HasAccess(player, "extend") && hotel.rooms.Values.FirstOrDefault(x => x.renter == player.UserIDString) != null)
                 {
                     //if Player can extend add button here
                     var extendContainer = new CuiElementContainer();
@@ -1410,7 +1415,7 @@ namespace Oxide.Plugins
 
         private string CreatePlayerGuiMsg(BasePlayer player, HotelData hotel, string guiMsg)
         {
-            var loc = hotel.x == null ? "None" : $"{hotel.x} {hotel.y} {hotel.z}";
+            var loc = hotel.x == null ? "None" : $"X : {double.Parse(hotel.x):F0}, Y : {double.Parse(hotel.y):F0}, Z : {double.Parse(hotel.z):F0}";
             var hotelRadius = hotel.r ?? "None";
             var roomRadius = hotel.rr ?? "None";
             var roomCount = hotel.rooms?.Count ?? 0;
