@@ -19,21 +19,20 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.22")]
+    [Info("Hotel", "Shady14u", "2.0.23")]
     [Description("Complete Hotel System for Rust.")]
     public class Hotel : RustPlugin
     {
         #region PluginReferences
 
         [PluginReference] 
-        Plugin ZoneManager, Economics, ServerRewards, InfoPanel, Backpacks;
+        Plugin ZoneManager, Economics, ServerRewards, Backpacks;
 
         #endregion
 
         #region Fields
 
         private Timer hotelGuiTimer;
-        private bool hotelPanelLoaded;
         private Timer hotelRoomCheckoutTimer;
         private readonly Hash<BasePlayer, Timer> playerGuiTimers = new Hash<BasePlayer, Timer>();
         private readonly Hash<BasePlayer, Timer> playerBlackListGuiTimers = new Hash<BasePlayer, Timer>();
@@ -76,9 +75,6 @@ namespace Oxide.Plugins
 
             [JsonProperty(PropertyName = "enterZoneShowRoom")]
             public bool EnterZoneShowRoom;
-
-            [JsonProperty(PropertyName = "hotelPanel")]
-            public HotelPanel HotelPanel;
 
             [JsonProperty(PropertyName = "KickHobos")]
             public bool KickHobos;
@@ -142,6 +138,20 @@ namespace Oxide.Plugins
             [JsonProperty(PropertyName = "defaultZoneFlags")]
             public string[] DefaultZoneFlags;
 
+            [JsonProperty(PropertyName = "showRoomCounterUi")]
+            public bool ShowRoomCounterUi { get; set; } = false;
+
+            [JsonProperty(PropertyName = "counterUiAnchorMin")]
+            public string CounterUiAnchorMin { get; set; } = "0.11 0.850";
+
+            [JsonProperty(PropertyName = "counterUiAnchorMax")]
+            public string CounterUiAnchorMax { get; set; } = "0.28 0.98";
+
+            [JsonProperty(PropertyName = "counterUiTextColor")]
+            public string CounterUiTextColor { get; set; } = "0 1 0 1";
+            [JsonProperty(PropertyName = "counterUiTextSize")]
+            public int CounterUiTextSize { get; set; } = 12;
+
             #region Methods (Public)
 
             public static Configuration DefaultConfig()
@@ -151,62 +161,21 @@ namespace Oxide.Plugins
                     OpenDoorPlayerGui = true,
                     OpenDoorShowRoom = false,
                     UseNpcShowPlayerGui = true,
-                    UseNpcShowRoom = false,
+                    UseNpcShowRoom = true,
                     EnterZoneShowPlayerGui = false,
-                    EnterZoneShowRoom = false,
+                    EnterZoneShowRoom = true,
                     KickHobos = true,
+                    ShowRoomCounterUi = true,
                     XMin = "0.65",
                     XMax = "1.0",
                     YMin = "0.6",
                     YMax = "0.9",
                     PanelXMin = "0.3",
                     PanelXMax = "0.6",
-                    PanelYMin = "0.7",
+                    PanelYMin = "0.6",
                     PanelYMax = "0.95",
                     PanelTimeOut = 10,
                     AuthLevel = 2,
-                    HotelPanel = new HotelPanel
-                    {
-                        Autoload = true,
-                        AnchorX = "Left",
-                        AnchorY = "Bottom",
-                        Available = true,
-                        BackgroundColor = "0 0 0 0",
-                        Dock = "TopLeftDock",
-                        Width = 0.4,
-                        Height = 0.95,
-                        Margin = "0 0 0 0.01",
-                        Order = 8,
-                        Image = new HotelPanelImage
-                        {
-                            AnchorX = "Left",
-                            AnchorY = "Bottom",
-                            Available = true,
-                            BackgroundColor = "0 0 0 0",
-                            Dock = "TopLeftDock",
-                            Height = 0.8,
-                            Margin = "0 0.05 0.1 0.05",
-                            Order = 1,
-                            Url = "https://i.imgur.com/XHm7WGb.png",
-                            Width = 0.15
-                        },
-                        Text = new HotelPanelText
-                        {
-                            Align = "MiddleCenter",
-                            AnchorX = "Left",
-                            AnchorY = "Bottom",
-                            Available = true,
-                            BackgroundColor = "0 0 0 0",
-                            Dock = "TopLeftDock",
-                            FontColor = "1 1 1 1",
-                            FontSize = 10,
-                            Content = "Hotel Rooms",
-                            Height = 1,
-                            Margin = "0 0.02 0 0 ",
-                            Order = 2,
-                            Width = 0.85
-                        }
-                    },
                     AdminGuiJson = @"[{""name"": ""HotelAdmin"",""parent"": ""Overlay"",""components"":[{""type"":""UnityEngine.UI.Image"",""color"":""0.1 0.1 0.1 0.7"",},
                             {""type"":""RectTransform"",""anchormin"": ""{xmin} {ymin}"", ""anchormax"": ""{xmax} {ymax}""}]},{""parent"": ""HotelAdmin"",""components"":
                             [{""type"":""UnityEngine.UI.Text"", ""text"":""{msg}"",""fontSize"":15, ""align"": ""MiddleLeft""},{""type"":""RectTransform"",
@@ -446,9 +415,7 @@ namespace Oxide.Plugins
             var parentEntity = codeLock?.GetParentEntity();
             if (parentEntity == null || !parentEntity.name.Contains("door")) return null;
 
-            var playersZones = ZoneManager.Call<string[]>("GetPlayerZoneIDs", player);
-
-            if (storedData.Hotels.Any(hotel => playersZones.Contains(hotel.hotelName)))
+            if(hotelGuests.Any(x=>x.Key==player.userID))
             {
                 return false;
             }
@@ -462,10 +429,12 @@ namespace Oxide.Plugins
             var parentEntity = codeLock?.GetParentEntity();
             if (parentEntity == null || !parentEntity.name.Contains("door")) return null;
 
-            var playersZones = ZoneManager.Call<string[]>("GetPlayerZoneIDs", player);
-
-            var targetHotel = storedData.Hotels.FirstOrDefault(hotel => playersZones.Contains(hotel.hotelName));
-
+            HotelData targetHotel;
+            if (!hotelGuests.TryGetValue(player.userID, out targetHotel))
+            {
+                return null;
+            }
+            
             if (targetHotel == null) return null;
 
             if (config.OpenDoorPlayerGui)
@@ -538,7 +507,7 @@ namespace Oxide.Plugins
             {
                 Puts(e.Message);
                 Puts(e.StackTrace);
-                //storedData = new StoredData();
+                storedData = new StoredData();
             }
         }
 
@@ -591,10 +560,6 @@ namespace Oxide.Plugins
             return null;
         }
         
-        void OnPlayerConnected(BasePlayer player)
-        {
-            UpdateHotelCounter();
-        }
 
         void OnPlayerDisconnected(BasePlayer player)
         {
@@ -619,28 +584,17 @@ namespace Oxide.Plugins
             }
         }
         
-        void Loaded()
-        {
-            if (InfoPanel && InfoPanel.IsLoaded)
-            {
-                InfoPanelInit();
-            }
-        }
-
-        void OnPluginLoaded(Plugin plugin)
-        {
-            if (plugin.Title == "InfoPanel")
-            {
-                InfoPanelInit();
-            }
-        }
-
         void OnServerInitialized(bool initial)
         {
-            InfoPanelInit();
             CheckTimeOutRooms();
+            if (config.ShowRoomCounterUi)
+            {
+                hotelGuiTimer = timer.Repeat(5f, 0, UpdateHotelCounter);
+            }
+
             hotelRoomCheckoutTimer = timer.Repeat(60f, 0, CheckTimeOutRooms);
         }
+
 
         void OnUseNPC(BasePlayer npc, BasePlayer player)
         {
@@ -657,22 +611,7 @@ namespace Oxide.Plugins
         #endregion
 
         #region Helper Methods
-
-        private void AddHotelPanel()
-        {
-            try
-            {
-                hotelPanelLoaded = InfoPanel.Call<bool>("PanelRegister", "Hotel", "HotelPanel",
-                    JsonConvert.SerializeObject(config.HotelPanel));
-                if (hotelPanelLoaded)
-                    InfoPanel.Call("ShowPanel", "Hotel", "HotelPanel");
-            }
-            catch
-            {
-                Debug.LogWarning("Unable to create Hotel Panel. Is InfoPanel Installed?");
-            }
-        }
-
+        
         private bool CanRentRoom(BasePlayer player, HotelData hotel, bool isExtending = false)
         {
             var playerHasRoom = false;
@@ -1032,17 +971,6 @@ namespace Oxide.Plugins
                 {
                     roomTimeMessage.TimeMessage = "Your " + hotel.hotelName + " room expired";
                 }
-
-                if (secondsLeft < 600 && InfoPanel)
-                {
-                    InfoPanel.Call("SetPanelAttribute", "Hotel", "HotelPanelText", "FontColor", "0.6 0.1 0.1 1",
-                        userIdString);
-                }
-                else
-                {
-                    InfoPanel.Call("SetPanelAttribute", "Hotel", "HotelPanelText", "FontColor", "0 1 0 1",
-                        userIdString);
-                }
             }
 
             return roomTimeMessage;
@@ -1076,19 +1004,6 @@ namespace Oxide.Plugins
             return player.net.connection.authLevel >= config.AuthLevel ||
                    permission.UserHasPermission(player.UserIDString, $"hotel.{accessRole}");
         }
-
-        private void InfoPanelInit()
-        {
-            if (!InfoPanel || !InfoPanel.IsLoaded) return;
-
-            InfoPanel.Call("SendPanelInfo", "Hotel", new List<string> { "HotelPanel" });
-            AddHotelPanel();
-            if (hotelGuiTimer == null && hotelPanelLoaded)
-            {
-                hotelGuiTimer = timer.Repeat(5, 0, UpdateHotelCounter);
-            }
-        }
-
         
         private void LoadPermissions()
         {
@@ -1268,9 +1183,19 @@ namespace Oxide.Plugins
         void Unload()
         {
             CleanUpMarkers();
-
+            CleanUpUi();
+            
             SaveData();
             hotelRoomCheckoutTimer.Destroy();
+            hotelGuiTimer.Destroy();
+        }
+
+        private void CleanUpUi()
+        {
+            foreach (var basePlayer in BasePlayer.activePlayerList)
+            {
+                CuiHelper.DestroyUi(basePlayer, "HotelTimer");
+            }
         }
 
         private static void UnlockLock(CodeLock codeLock)
@@ -1281,13 +1206,6 @@ namespace Oxide.Plugins
 
         private void UpdateHotelCounter()
         {
-            if (!InfoPanel || !InfoPanel.IsLoaded) return;
-
-            if (!hotelPanelLoaded)
-            {
-                AddHotelPanel();
-            }
-
             foreach (var basePlayer in BasePlayer.activePlayerList)
             {
                 var roomTimeMessage = new RoomTimeMessage
@@ -1302,18 +1220,43 @@ namespace Oxide.Plugins
                 {
                     roomTimeMessage = roomTime;
                 }
-
-                InfoPanel.Call("SetPanelAttribute", "Hotel", "HotelPanelText", "Content", roomTimeMessage.TimeMessage,
-                    basePlayer.UserIDString);
+                
+                ShowHotelCounterUi(basePlayer, roomTimeMessage);
             }
-
-            InfoPanel.Call("RefreshPanel", "Hotel", "HotelPanel");
-            
         }
+
 
         #endregion
 
         #region GUI
+
+        private void ShowHotelCounterUi(BasePlayer player, RoomTimeMessage roomTimeMessage)
+        {
+
+            var hotelCounterUi = new CuiElementContainer
+            {
+                {
+                    new CuiLabel()
+                    {
+                        Text = { 
+                            Text = roomTimeMessage.TimeMessage, 
+                            Align = TextAnchor.UpperLeft, 
+                            FontSize = config.CounterUiTextSize, 
+                            Color = roomTimeMessage.TimeRemaining<600?"0.91 0.27 0.27 1":config.CounterUiTextColor
+                        },
+                        RectTransform =
+                        {
+                            AnchorMin = config.CounterUiAnchorMin,
+                            AnchorMax = config.CounterUiAnchorMax
+                        }
+                    },
+                    "Hud", "HotelTimer"
+                }
+            };
+            CuiHelper.DestroyUi(player, "HotelTimer");
+            CuiHelper.AddUi(player, hotelCounterUi);
+        }
+
 
         private void RefreshAdminHotelGui(BasePlayer player)
         {
@@ -2800,82 +2743,7 @@ namespace Oxide.Plugins
 
             #endregion
         }
-
-        public class HotelPanel
-        {
-            #region Properties and Indexers
-
-            public string AnchorX { get; set; }
-            public string AnchorY { get; set; }
-
-            public bool Autoload { get; set; }
-            public bool Available { get; set; }
-            public string BackgroundColor { get; set; }
-            public string Dock { get; set; }
-            public double Height { get; set; }
-            public HotelPanelImage Image { get; set; }
-            public string Margin { get; set; }
-            public int Order { get; set; }
-            public HotelPanelText Text { get; set; }
-            public double Width { get; set; }
-
-            #endregion
-        }
-
-        public class HotelUIComponent
-        {
-            #region Properties and Indexers
-
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public string align { get; set; }
-
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public string anchormax { get; set; }
-
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public string anchormin { get; set; }
-
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public string color { get; set; }
-
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public int? fontSize { get; set; }
-
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public string text { get; set; }
-
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public string type { get; set; }
-
-            #endregion
-        }
-
-        public class HotelUIPanel
-        {
-            #region Properties and Indexers
-
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public HotelUIComponent[] components { get; set; }
-
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public string name { get; set; }
-
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public string parent { get; set; }
-
-            #endregion
-        }
-
+        
         public class HotelMarker
         {
             #region Properties and Indexers
