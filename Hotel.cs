@@ -4,7 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using Facepunch;
@@ -19,7 +18,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.23")]
+    [Info("Hotel", "Shady14u", "2.0.24")]
     [Description("Complete Hotel System for Rust.")]
     public class Hotel : RustPlugin
     {
@@ -142,7 +141,7 @@ namespace Oxide.Plugins
             public bool ShowRoomCounterUi { get; set; } = false;
 
             [JsonProperty(PropertyName = "counterUiAnchorMin")]
-            public string CounterUiAnchorMin { get; set; } = "0.11 0.850";
+            public string CounterUiAnchorMin { get; set; } = "0.11 0.9";
 
             [JsonProperty(PropertyName = "counterUiAnchorMax")]
             public string CounterUiAnchorMax { get; set; } = "0.28 0.98";
@@ -310,6 +309,7 @@ namespace Oxide.Plugins
             public const string Menu11 = "Menu11";
             public const string Menu12 = "Menu12";
             public const string Menu13 = "Menu13";
+            public const string ExtendButtonText = "ExtendButtonText";
         }
 
         private string GetMsg(string key, object userId = null)
@@ -401,7 +401,8 @@ namespace Oxide.Plugins
                     "<color=green>/hotel reset</color> => resets the hotel data (all players and rooms, but keeps the hotel)",
                 [PluginMessages.Menu12] = "<color=green>/hotel roomradius XX</color> => sets the radius of the rooms",
                 [PluginMessages.Menu13] =
-                    "<color=green>/hotel rooms</color> => refreshes the rooms (detects new rooms, deletes rooms if they don't exist anymore, if rooms are in use they won't get taken in count)"
+                    "<color=green>/hotel rooms</color> => refreshes the rooms (detects new rooms, deletes rooms if they don't exist anymore, if rooms are in use they won't get taken in count)",
+                [PluginMessages.ExtendButtonText] = "Extend Your Stay"
             }, this);
         }
 
@@ -429,12 +430,14 @@ namespace Oxide.Plugins
             var parentEntity = codeLock?.GetParentEntity();
             if (parentEntity == null || !parentEntity.name.Contains("door")) return null;
 
-            HotelData targetHotel;
-            if (!hotelGuests.TryGetValue(player.userID, out targetHotel))
+            var playersZones = ZoneManager.Call<string[]>("GetPlayerZoneIDs", player);
+
+            if (!storedData.Hotels.Any(hotel => playersZones.Contains(hotel.hotelName)))
             {
                 return null;
             }
-            
+
+            var targetHotel = storedData.Hotels.FirstOrDefault(hotel => playersZones.Contains(hotel.hotelName));
             if (targetHotel == null) return null;
 
             if (config.OpenDoorPlayerGui)
@@ -1325,7 +1328,7 @@ namespace Oxide.Plugins
                     {
                         Button = { Color = ".3 .2 .3 1", Command = $"hotelextend '{hotel.hotelName}' ", FadeIn = 0.4f },
                         RectTransform = { AnchorMin = "0.7 0.8", AnchorMax = "1 1" },
-                        Text = { Text = "Extend your Stay", FontSize = 12, Align = TextAnchor.MiddleCenter }
+                        Text = { Text = GetMsg(PluginMessages.ExtendButtonText, player.userID), FontSize = 12, Align = TextAnchor.MiddleCenter }
                     }, "HotelPlayer");
 
                     CuiHelper.AddUi(player, extendContainer);
@@ -1395,7 +1398,7 @@ namespace Oxide.Plugins
                                 .Replace("{rnum}", roomCount.ToString())
                                 .Replace("{onum}", occupiedCount.ToString())
                                 .Replace("{price}", hotel.e)
-                                .Replace("{currency}", hotel.currency)
+                                .Replace("{currency}", hotel.currency=="0"?"Economics":hotel.currency=="1"?"Server Rewards":hotel.currency)
                                 .Replace("{durSeconds}", hotel.rd)
                                 .Replace("{durHours}", (int.Parse(hotel.rd??"0")/3600).ToString("F1"))
                                 .Replace("{durDays}", (int.Parse(hotel.rd??"0")/86400).ToString("F1"))
