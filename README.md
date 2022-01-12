@@ -110,51 +110,12 @@ These tokens can be used in the GUI and get replaced when rendered with values
 Config File:
 ```
 {
-  "adminGuiJson": "[ {\"name\": \"HotelAdmin\",\"parent\": \"Overlay\",\"components\":[{\"type\":\"UnityEngine.UI.Image\",\"color\":\"0.1 0.1 0.1 0.7\",},{\"type\":\"RectTransform\",\"anchormin\": \"{xmin} {ymin}\",\"anchormax\": \"{xmax} {ymax}\"}]},{\"parent\": \"HotelAdmin\",\"components\":[{\"type\":\"UnityEngine.UI.Text\",\"text\":\"{msg}\",\"fontSize\":15,\"align\": \"MiddleLeft\",},{\"type\":\"RectTransform\",\"anchormin\": \"0.1 0.1\",\"anchormax\": \"1 1\"}]}]",
+  "adminGuiJson": "[{\"name\": \"HotelAdmin\",\"parent\": \"Overlay\",\"components\":[{\"type\":\"UnityEngine.UI.Image\",\"color\":\"0.1 0.1 0.1 0.7\",},\r\n                            {\"type\":\"RectTransform\",\"anchormin\": \"{xmin} {ymin}\", \"anchormax\": \"{xmax} {ymax}\"}]},{\"parent\": \"HotelAdmin\",\"components\":\r\n                            [{\"type\":\"UnityEngine.UI.Text\", \"text\":\"{msg}\",\"fontSize\":15, \"align\": \"MiddleLeft\"},{\"type\":\"RectTransform\",\r\n                            \"anchormin\": \"0.1 0.1\",\"anchormax\": \"1 1\" }]}]",
   "authLevel": 2,
   "enterZoneShowPlayerGUI": false,
-  "enterZoneShowRoom": false,
-  "hotelPanel": {
-    "AnchorX": "Left",
-    "AnchorY": "Bottom",
-    "Autoload": true,
-    "Available": true,
-    "BackgroundColor": "0 0 0 0",
-    "Dock": "TopLeftDock",
-    "Height": 0.95,
-    "Image": {
-      "AnchorX": "Left",
-      "AnchorY": "Bottom",
-      "Available": true,
-      "BackgroundColor": "0 0 0 0",
-      "Dock": "TopLeftDock",
-      "Height": 0.8,
-      "Margin": "0 0.05 0.1 0.05",
-      "Order": 1,
-      "Url": "https://i.imgur.com/XHm7WGb.png",
-      "Width": 0.15
-    },
-    "Margin": "0 0 0 0.01",
-    "Order": 8,
-    "Text": {
-      "Align": "MiddleCenter",
-      "AnchorX": "Left",
-      "AnchorY": "Bottom",
-      "Available": true,
-      "BackgroundColor": "0 0 0 0",
-      "Content": "Hotel Rooms",
-      "Dock": "TopLeftDock",
-      "FontColor": "1 1 1 1",
-      "FontSize": 10,
-      "Height": 1.0,
-      "Margin": "0 0.02 0 0 ",
-      "Order": 2,
-      "Width": 0.85
-    },
-    "Width": 0.4
-  },
+  "enterZoneShowRoom": true,
   "KickHobos": true,
-  "mapMarker": "\t\t\t{name} Hotel\r\n{fnum} of {rnum} Rooms Available\r\n{rp} {rc} per {rd} Seconds",
+  "mapMarker": "\t\t\t{name} Hotel\r\n{fnum} of {rnum} Rooms Available\r\n{rp} {rc} per {durHours} Hours",
   "mapMarkerColor": "#710AC1",
   "mapMarkerColorBorder": "#5FCEA8",
   "mapMarkerRadius": 0.25,
@@ -164,15 +125,15 @@ Config File:
   "panelXMax": "0.6",
   "panelXMin": "0.3",
   "panelYMax": "0.95",
-  "panelYMin": "0.7",
-  "playerGuiJson": "[{\"name\": \"HotelPlayer\",\"parent\": \"Overlay\",\"components\":[{\"type\":\"UnityEngine.UI.Image\",\"color\":\"0.1 0.1 0.1 0.7\",},{\"type\":\"RectTransform\",\"anchormin\": \"{pxmin} {pymin}\",\"anchormax\": \"{pxmax} {pymax}\"}]},{\"parent\": \"HotelPlayer\",\"components\":[{\"type\":\"UnityEngine.UI.Text\",\"text\":\"{msg}\",\"fontSize\":15,\"align\": \"MiddleLeft\",},{\"type\":\"RectTransform\",\"anchormin\": \"0.1 0.1\",\"anchormax\": \"1 1\"}]}]",
+  "panelYMin": "0.6",
+  "playerGuiJson": "[{\"name\": \"HotelPlayer\",\"parent\": \"Overlay\",\"components\":[{\"type\":\"UnityEngine.UI.Image\",\"color\":\"0.1 0.1 0.1 0.7\",},\r\n                            {\"type\":\"RectTransform\",\"anchormin\": \"{pxmin} {pymin}\",\"anchormax\": \"{pxmax} {pymax}\"}]},{\"parent\": \"HotelPlayer\",\"components\":\r\n                            [{\"type\":\"UnityEngine.UI.Text\",\"text\":\"{msg}\",\"fontSize\":15,\"align\": \"MiddleLeft\",},{\"type\":\"RectTransform\",\"anchormin\": \"0.1 0.1\",\"anchormax\": \"1 0.8\"}]}]",
   "useNPCShowPlayerGUI": true,
-  "useNPCShowRoom": false,
+  "useNPCShowRoom": true,
   "xMax": "1.0",
   "xMin": "0.65",
   "yMax": "0.9",
   "yMin": "0.6",
-  "blackListGuiJson": "[{\"name\": \"HotelBlackList\",\"parent\": \"Overlay\",\"components\":[{\"type\":\"UnityEngine.UI.Image\",\"color\":\"0.1 0.1 0.1 0.7\",},{\"type\":\"RectTransform\",\"anchormin\": \"{pxmin} {pymin}\",\"anchormax\": \"{pxmax} {pymax}\"}]},{\"parent\": \"HotelBlackList\",\"components\":[{\"type\":\"UnityEngine.UI.Text\",\"text\":\"{msg}\",\"fontSize\":15,\"align\": \"MiddleLeft\",},{\"type\":\"RectTransform\",\"anchormin\": \"0.1 0.1\",\"anchormax\": \"1 1\"}]}]",
+  "blackListGuiJson": "[{\"name\": \"HotelBlackList\",\"parent\": \"Overlay\",\"components\":[{\"type\":\"UnityEngine.UI.Image\",\"color\":\"0.1 0.1 0.1 0.7\",},\r\n                            {\"type\":\"RectTransform\",\"anchormin\": \"{pxmin} {pymin}\",\"anchormax\": \"{pxmax} {pymax}\"}]},{\"parent\": \"HotelBlackList\",\"components\":\r\n                            [{\"type\":\"UnityEngine.UI.Text\",\"text\":\"{msg}\",\"fontSize\":15,\"align\": \"MiddleLeft\",},{\"type\":\"RectTransform\",\r\n                            \"anchormin\": \"0.1 0.1\",\"anchormax\": \"1 1\"}]}]",
   "blackList": [
     "explosive.timed"
   ],
@@ -188,7 +149,12 @@ Config File:
     "pvpgod",
     "sleepgod",
     "undestr"
-  ]
+  ],
+  "showRoomCounterUi": true,
+  "counterUiAnchorMin": "0.11 0.850",
+  "counterUiAnchorMax": "0.28 0.98",
+  "counterUiTextColor": "0 1 0 1",
+  "counterUiTextSize": 12
 }
 ```
 This plugin was originally developed by Reneb. Much respect and admiration should go to this developer.
