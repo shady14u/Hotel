@@ -432,9 +432,9 @@ namespace Oxide.Plugins
 
             var playersZones = ZoneManager.Call<string[]>("GetPlayerZoneIDs", player);
 
-            if (storedData.Hotels.Any(hotel => playersZones.Contains(hotel.hotelName)))
+            if (!storedData.Hotels.Any(hotel => playersZones.Contains(hotel.hotelName)))
             {
-                return false;
+                return null;
             }
 
             var targetHotel = storedData.Hotels.FirstOrDefault(hotel => playersZones.Contains(hotel.hotelName));
