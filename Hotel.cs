@@ -1189,8 +1189,8 @@ namespace Oxide.Plugins
             CleanUpUi();
             
             SaveData();
-            hotelRoomCheckoutTimer.Destroy();
-            hotelGuiTimer.Destroy();
+            hotelRoomCheckoutTimer?.Destroy();
+            hotelGuiTimer?.Destroy();
         }
 
         private void CleanUpUi()
