@@ -18,7 +18,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.24")]
+    [Info("Hotel", "Shady14u", "2.0.25")]
     [Description("Complete Hotel System for Rust.")]
     public class Hotel : RustPlugin
     {
@@ -563,6 +563,17 @@ namespace Oxide.Plugins
             return null;
         }
         
+        void OnPlayerLootEnd(PlayerLoot inventory)
+        {
+            HotelData hotel;
+            if (!hotelGuests.TryGetValue(inventory.baseEntity.userID, out hotel)) return;
+            if (HasBlackListedItems(inventory.baseEntity, config.BlackList.ToList()))
+            {
+                var zone = ZoneManager.Call<ZoneManager.Zone>("GetZoneByID", hotel.hotelName);
+                ZoneManager.Call("EjectPlayer", inventory.baseEntity, zone);
+                RefreshBlackListGui(inventory.baseEntity, hotel, config.BlackList.ToList());
+            }
+        }
 
         void OnPlayerDisconnected(BasePlayer player)
         {
@@ -1189,8 +1200,8 @@ namespace Oxide.Plugins
             CleanUpUi();
             
             SaveData();
-            hotelRoomCheckoutTimer.Destroy();
-            hotelGuiTimer.Destroy();
+            hotelRoomCheckoutTimer?.Destroy();
+            hotelGuiTimer?.Destroy();
         }
 
         private void CleanUpUi()
