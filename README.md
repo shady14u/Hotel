@@ -2,6 +2,8 @@
 
 [Click here for a demo](https://www.youtube.com/watch?v=nuZDKD-pwZo)
 
+Looking for a Copy/Paste Hotel.. [Check out this one By HardStyle](https://discord.com/channels/608462425729007637/726472885061025803/931013209077481512)
+
 ## Features
 **Hotel** is a completely automated room rental system for Rust
 - Admins can create rooms, for players to rent, using Server Rewards, Economics, or In-Game Items
