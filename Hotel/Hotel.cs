@@ -2,29 +2,29 @@
 
 #region Using Statements
 
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using Facepunch;
 using Newtonsoft.Json;
 using Oxide.Core;
 using Oxide.Core.Libraries.Covalence;
 using Oxide.Core.Plugins;
 using Oxide.Game.Rust.Cui;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using UnityEngine;
 
 #endregion
 
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.25")]
+    [Info("Hotel", "Shady14u", "2.0.26")]
     [Description("Complete Hotel System for Rust.")]
     public class Hotel : RustPlugin
     {
         #region PluginReferences
 
-        [PluginReference] 
+        [PluginReference]
         Plugin ZoneManager, Economics, ServerRewards, Backpacks;
 
         #endregion
@@ -38,14 +38,14 @@ namespace Oxide.Plugins
         private readonly Hash<ulong, HotelData> hotelGuests = new Hash<ulong, HotelData>();
 
         private StoredData storedData;
-        
+
         static readonly int ConstructionColl = LayerMask.GetMask("Construction", "Construction Trigger");
         static readonly int DeployableColl = LayerMask.GetMask("Deployed");
         static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0);
-        
+
         public static Quaternion DefaultQuaternion = new Quaternion(0f, 0f, 0f, 0f);
         private static Dictionary<string, HotelData> EditHotel = new Dictionary<string, HotelData>();
-        private static Dictionary<string, HotelMarker> HotelMarkers = new Dictionary<string, HotelMarker>(); 
+        private static Dictionary<string, HotelMarker> HotelMarkers = new Dictionary<string, HotelMarker>();
         private static readonly Vector3 Vector3Up = new Vector3(0f, 0.1f, 0f);
         private static readonly Vector3 Vector3Up2 = new Vector3(0f, 1.5f, 0f);
 
@@ -150,6 +150,8 @@ namespace Oxide.Plugins
             public string CounterUiTextColor { get; set; } = "0 1 0 1";
             [JsonProperty(PropertyName = "counterUiTextSize")]
             public int CounterUiTextSize { get; set; } = 12;
+            [JsonProperty(PropertyName = "hideUiForNonRenters")]
+            public bool HideUiForNonRenters { get; set; } = true;
 
             #region Methods (Public)
 
@@ -191,8 +193,8 @@ namespace Oxide.Plugins
                     MapMarkerColor = "#710AC1",
                     MapMarkerColorBorder = "#5FCEA8",
                     MapMarkerRadius = 0.25f,
-                    BlackList = new[]{"explosive.timed"},
-                    DefaultZoneFlags = new []{"lootself","nobuild","nocup","nodecay","noentitypickup","noplayerloot","nostash","notrade","pvpgod","sleepgod","undestr"}
+                    BlackList = new[] { "explosive.timed" },
+                    DefaultZoneFlags = new[] { "lootself", "nobuild", "nocup", "nodecay", "noentitypickup", "noplayerloot", "nostash", "notrade", "pvpgod", "sleepgod", "undestr" }
                 };
             }
 
@@ -224,9 +226,9 @@ namespace Oxide.Plugins
                 config.BlackListGuiJson = config.BlackListGuiJson.Replace("{pxmin}", config.PanelXMin)
                     .Replace("{pxmax}", config.PanelXMax).Replace("{pymin}", config.PanelYMin)
                     .Replace("{pymax}", config.PanelYMax);
-                
+
                 var blackListTemp = new List<string>();
-                
+
                 if (config.BlackList == null)
                 {
                     config.BlackList = blackListTemp.ToArray();
@@ -254,7 +256,7 @@ namespace Oxide.Plugins
         }
 
         protected override void LoadDefaultConfig() => config = Configuration.DefaultConfig();
-        
+
         protected override void SaveConfig() => Config.WriteObject(config);
 
         #endregion
@@ -372,7 +374,7 @@ namespace Oxide.Plugins
                 [PluginMessages.MessageMustLookAtDoor] = "You must look at the door of the room or put the roomId",
                 [PluginMessages.GuiBoardAdmin] =
                     "\t\t\t\t\t<color=green>HOTEL MANAGER</color>\n\n<color=cyan>Hotel Name:\t\t{name}</color>\n<color=grey>Hotel Location:</color>\t{loc}\n<color=orange>Hotel Radius:\t\t{hrad}</color>\t<color=yellow>Rooms Radius:\t{rrad}</color>\n<color=blue>Rooms:\t{rnum}</color>\t\t<color=red>Occupied:\t{onum}</color>\t\t<color=green>Vacant:\t{fnum}</color>\n<color=cyan>Rent Price:\t{rp}\t</color><color=purple>{rc}</color>\n<color=grey>Duration:\t{rd} Seconds</color>\n<color=orange>Kick Hobos:\t{kh}</color>\t\t<color=yellow>NPC Id:\t{npcId}</color>\n<color=blue>Show Marker:\t{sm}</color>\n<color=red>Permission:\t{p}</color>",
-                [PluginMessages.GuiBoardBlackList] ="<color=blue>You cannot enter {name} Hotel with any of the following items:</color>\r\n<size=10>{blacklist}</size>",
+                [PluginMessages.GuiBoardBlackList] = "<color=blue>You cannot enter {name} Hotel with any of the following items:</color>\r\n<size=10>{blacklist}</size>",
                 [PluginMessages.GuiBoardPlayer] =
                     "\t\t\t\t\t\t\t\t\t\t<color=yellow><size=16>{name}</size></color>\n\t\t\t\t\t<color=yellow><size=12>Location: ({loc})</size></color>\n\t\t<color=blue>Rooms:\t\t{rnum}</color>\t\t<color=green>Price:\t{price} {currency} per {durHours} hours </color>\n\t\t<color=red>Occupied:\t{onum}</color>\n\t\t<color=green>Vacant:\t\t{fnum}</color>",
                 [PluginMessages.GuiBoardPlayerRoom] =
@@ -416,7 +418,7 @@ namespace Oxide.Plugins
             var parentEntity = codeLock?.GetParentEntity();
             if (parentEntity == null || !parentEntity.name.Contains("door")) return null;
 
-            if(hotelGuests.Any(x=>x.Key==player.userID))
+            if (hotelGuests.Any(x => x.Key == player.userID))
             {
                 return false;
             }
@@ -499,14 +501,14 @@ namespace Oxide.Plugins
             SaveData();
             return true;
         }
-        
+
         private void LoadData()
         {
             try
             {
                 storedData = Interface.GetMod().DataFileSystem.ReadObject<StoredData>("Hotel");
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Puts(e.Message);
                 Puts(e.StackTrace);
@@ -518,7 +520,7 @@ namespace Oxide.Plugins
         {
             SaveData();
         }
-        
+
         void OnEnterZone(string zoneId, BasePlayer player)
         {
             foreach (var hotel in storedData.Hotels.Where(hotel => hotel.hotelName != null)
@@ -528,7 +530,7 @@ namespace Oxide.Plugins
                 hotelGuests.Add(player.userID, hotel);
                 //TODO: Let each Hotel blacklist items?
                 //var blackList = hotel.BlackList;
-                
+
                 if (HasBlackListedItems(player, config.BlackList.ToList()))
                 {
                     var zone = ZoneManager.Call<ZoneManager.Zone>("GetZoneByID", hotel.hotelName);
@@ -562,7 +564,7 @@ namespace Oxide.Plugins
             }
             return null;
         }
-        
+
         void OnPlayerLootEnd(PlayerLoot inventory)
         {
             HotelData hotel;
@@ -597,7 +599,7 @@ namespace Oxide.Plugins
                 return;
             }
         }
-        
+
         void OnServerInitialized(bool initial)
         {
             CheckTimeOutRooms();
@@ -625,7 +627,7 @@ namespace Oxide.Plugins
         #endregion
 
         #region Helper Methods
-        
+
         private bool CanRentRoom(BasePlayer player, HotelData hotel, bool isExtending = false)
         {
             var playerHasRoom = false;
@@ -708,7 +710,7 @@ namespace Oxide.Plugins
                     ResetRoom(room);
                 }
 
-                foreach (var room in hotel.rooms.Values.Where(x =>string.IsNullOrEmpty(x.renter)))
+                foreach (var room in hotel.rooms.Values.Where(x => string.IsNullOrEmpty(x.renter)))
                 {
                     var codeLock = FindCodeLockByPos(room.Pos());
                     if (codeLock != null)
@@ -972,8 +974,8 @@ namespace Oxide.Plugins
             };
 
             foreach (var secondsLeft in from room in hotel.rooms.Values
-                where room.renter == userIdString
-                select room.CheckOutTime() - LogTime())
+                                        where room.renter == userIdString
+                                        select room.CheckOutTime() - LogTime())
             {
                 roomTimeMessage.TimeRemaining = secondsLeft;
                 if (secondsLeft > 0)
@@ -1003,7 +1005,7 @@ namespace Oxide.Plugins
                 {
                     return true;
                 };
-                if (backpack != null && backpack.GetAmount(int.Parse(item.Split('_')[0]),false) > 0)
+                if (backpack != null && backpack.GetAmount(int.Parse(item.Split('_')[0]), false) > 0)
                 {
                     return true;
                 }
@@ -1018,14 +1020,14 @@ namespace Oxide.Plugins
             return player.net.connection.authLevel >= config.AuthLevel ||
                    permission.UserHasPermission(player.UserIDString, $"hotel.{accessRole}");
         }
-        
+
         private void LoadPermissions()
         {
             permission.RegisterPermission("hotel.admin", this);
             permission.RegisterPermission("hotel.extend", this);
             permission.RegisterPermission("hotel.renter", this);
 
-            foreach (var hotel in  storedData.Hotels.Where(hotel => hotel.p != null && hotel.p.ToLower() != "renter"))
+            foreach (var hotel in storedData.Hotels.Where(hotel => hotel.p != null && hotel.p.ToLower() != "renter"))
             {
                 permission.RegisterPermission("hotel." + hotel.p, this);
             }
@@ -1036,7 +1038,7 @@ namespace Oxide.Plugins
             codeLock.SetFlag(BaseEntity.Flags.Locked, true);
             codeLock.SendNetworkUpdate();
         }
-        
+
         static double LogTime()
         {
             return DateTime.UtcNow.Subtract(Epoch).TotalSeconds;
@@ -1136,7 +1138,7 @@ namespace Oxide.Plugins
         {
             var door = codeLock.GetParentEntity();
             codeLock.whitelistPlayers = new List<ulong>();
-            
+
             UnlockLock(codeLock);
             CloseDoor(door as Door);
 
@@ -1198,7 +1200,7 @@ namespace Oxide.Plugins
         {
             CleanUpMarkers();
             CleanUpUi();
-            
+
             SaveData();
             hotelRoomCheckoutTimer?.Destroy();
             hotelGuiTimer?.Destroy();
@@ -1234,8 +1236,14 @@ namespace Oxide.Plugins
                 {
                     roomTimeMessage = roomTime;
                 }
-                
-                ShowHotelCounterUi(basePlayer, roomTimeMessage);
+
+                if (roomTimeMessage.TimeMessage.StartsWith("No Room ") && config.HideUiForNonRenters)
+                {
+                    CuiHelper.DestroyUi(basePlayer, "HotelTimer");
+                }else{
+                    ShowHotelCounterUi(basePlayer, roomTimeMessage);
+                }
+
             }
         }
 
@@ -1252,10 +1260,10 @@ namespace Oxide.Plugins
                 {
                     new CuiLabel()
                     {
-                        Text = { 
-                            Text = roomTimeMessage.TimeMessage, 
-                            Align = TextAnchor.UpperLeft, 
-                            FontSize = config.CounterUiTextSize, 
+                        Text = {
+                            Text = roomTimeMessage.TimeMessage,
+                            Align = TextAnchor.UpperLeft,
+                            FontSize = config.CounterUiTextSize,
                             Color = roomTimeMessage.TimeRemaining<600?"0.91 0.27 0.27 1":config.CounterUiTextColor
                         },
                         RectTransform =
@@ -1283,11 +1291,11 @@ namespace Oxide.Plugins
             CuiHelper.AddUi(player, send);
         }
 
-        private void RefreshBlackListGui(BasePlayer player,HotelData hotel, List<string> blackList)
+        private void RefreshBlackListGui(BasePlayer player, HotelData hotel, List<string> blackList)
         {
             RemoveBlackListGui(player);
 
-            var msg = CreateBlackListGuiMsg(player,hotel, blackList);
+            var msg = CreateBlackListGuiMsg(player, hotel, blackList);
             if (msg == string.Empty) return;
             var send = config.BlackListGuiJson.Replace("{msg}", msg);
             CuiHelper.AddUi(player, send);
@@ -1296,9 +1304,9 @@ namespace Oxide.Plugins
 
         private string CreateBlackListGuiMsg(BasePlayer player, HotelData hotel, List<string> blackList)
         {
-            return GetMsg(PluginMessages.GuiBoardBlackList,player.UserIDString)
-                .Replace("{name}",hotel.hotelName)
-                .Replace("{blacklist}",string.Join("\r\n",blackList.Select(x=>x.Split('_')[1]).OrderBy(x=>x)));
+            return GetMsg(PluginMessages.GuiBoardBlackList, player.UserIDString)
+                .Replace("{name}", hotel.hotelName)
+                .Replace("{blacklist}", string.Join("\r\n", blackList.Select(x => x.Split('_')[1]).OrderBy(x => x)));
         }
 
         private void RemoveBlackListGui(BasePlayer player)
@@ -1306,7 +1314,7 @@ namespace Oxide.Plugins
             if (player == null || player.net == null) return;
             if (playerBlackListGuiTimers[player] != null)
                 playerBlackListGuiTimers[player].Destroy();
-            
+
             CuiHelper.DestroyUi(player, "HotelBlackList");
         }
 
@@ -1330,7 +1338,7 @@ namespace Oxide.Plugins
                 send = config.PlayerGuiJson.Replace("{msg}", msg);
 
                 CuiHelper.AddUi(player, send);
-                
+
                 if (HasAccess(player, "extend") && hotel.rooms.Values.FirstOrDefault(x => x.renter == player.UserIDString) != null)
                 {
                     //if Player can extend add button here
@@ -1345,7 +1353,7 @@ namespace Oxide.Plugins
                     CuiHelper.AddUi(player, extendContainer);
                 }
             }
-            
+
             playerGuiTimers[player] = timer.Once(config.PanelTimeOut, () => RemovePlayerHotelGui(player));
         }
 
@@ -1409,10 +1417,10 @@ namespace Oxide.Plugins
                                 .Replace("{rnum}", roomCount.ToString())
                                 .Replace("{onum}", occupiedCount.ToString())
                                 .Replace("{price}", hotel.e)
-                                .Replace("{currency}", hotel.currency=="0"?"Economics":hotel.currency=="1"?"Server Rewards":hotel.currency)
+                                .Replace("{currency}", hotel.currency == "0" ? "Economics" : hotel.currency == "1" ? "Server Rewards" : hotel.currency)
                                 .Replace("{durSeconds}", hotel.rd)
-                                .Replace("{durHours}", (int.Parse(hotel.rd??"0")/3600).ToString("F1"))
-                                .Replace("{durDays}", (int.Parse(hotel.rd??"0")/86400).ToString("F1"))
+                                .Replace("{durHours}", (int.Parse(hotel.rd ?? "0") / 3600).ToString("F1"))
+                                .Replace("{durDays}", (int.Parse(hotel.rd ?? "0") / 86400).ToString("F1"))
                             .Replace("{fnum}", freeCount.ToString())
                             + roomGui;
 
@@ -1482,7 +1490,7 @@ namespace Oxide.Plugins
             if (player == null || player.net == null) return;
             if (playerGuiTimers[player] != null)
                 playerGuiTimers[player].Destroy();
-          
+
             CuiHelper.DestroyUi(player, "HotelPlayer");
         }
 
@@ -1522,7 +1530,7 @@ namespace Oxide.Plugins
             if (!hotel.showMarker)
             {
                 if (!HotelMarkers.TryGetValue(hotel.hotelName, out hotelMarker)) return;
-                
+
                 hotelMarker.VendingMachineMapMarker?.Kill();
                 hotelMarker.GenericMapMarker?.Kill();
                 HotelMarkers.Remove(hotel.hotelName);
@@ -1580,8 +1588,8 @@ namespace Oxide.Plugins
                     .Replace("{rc}",
                         hotel.currency == "0" ? "Economics" : hotel.currency == "1" ? "Server Rewards" : hotel.currency)
                     .Replace("{rd}", hotel.rd)
-                    .Replace("{durHours}", (int.Parse(hotel.rd??"0")/3600).ToString("F1"))
-                    .Replace("{durDays}", (int.Parse(hotel.rd??"0")/86400).ToString("F1"))
+                    .Replace("{durHours}", (int.Parse(hotel.rd ?? "0") / 3600).ToString("F1"))
+                    .Replace("{durDays}", (int.Parse(hotel.rd ?? "0") / 86400).ToString("F1"))
                     .Replace("{durSeconds}", hotel.rd);
 
                 if (!string.IsNullOrEmpty(hotel.p))
@@ -1616,7 +1624,7 @@ namespace Oxide.Plugins
         #endregion
 
         #region Chat Commands
-        
+
         [ChatCommand("hotel_save")]
         void CmdChatHotelSave(BasePlayer player, string command, string[] args)
         {
@@ -2052,13 +2060,13 @@ namespace Oxide.Plugins
                 SendReply(player, GetMsg(PluginMessages.MessageErrorNotAllowed, player.userID));
                 return;
             }
-            
+
             if (args.Length == 0)
             {
                 SendReply(player, GetMsg(PluginMessages.MessageHotelEnableHelp, player.userID));
                 return;
             }
-            
+
             var renter = FindPlayer(args[0]);
             if (renter == null)
             {
@@ -2066,13 +2074,13 @@ namespace Oxide.Plugins
                 return;
             }
             SetPlayerAsRenter(args[0], true);
-            SendReply(player, GetMsg(PluginMessages.MessagePlayerIsRenter, player.userID).Replace("{playerName}",renter.Name));
+            SendReply(player, GetMsg(PluginMessages.MessagePlayerIsRenter, player.userID).Replace("{playerName}", renter.Name));
 
         }
 
         private void SetPlayerAsRenter(string playerName, bool isRenter)
         {
-            
+
             if (isRenter)
             {
                 //TODO: Find player and add hotel.renter permission
@@ -2090,8 +2098,8 @@ namespace Oxide.Plugins
         void HotelExtend(IPlayer iplayer, string command, string[] args)
         {
             var player = iplayer.Object as BasePlayer;
-            args[0] = args[0].Replace("'","");
-            CmdChatHotelExtend(player, null,args);
+            args[0] = args[0].Replace("'", "");
+            CmdChatHotelExtend(player, null, args);
         }
 
         [ChatCommand("hotel_extend")]
@@ -2602,7 +2610,7 @@ namespace Oxide.Plugins
             public string z;
 
             #region Constructors
-            
+
             public Room(Vector3 position)
             {
                 x = Math.Ceiling(position.x).ToString(CultureInfo.InvariantCulture);
@@ -2661,7 +2669,7 @@ namespace Oxide.Plugins
 
             public DeployableItem()
             {
-                
+
             }
 
             public DeployableItem(BaseEntity deployable)
@@ -2757,7 +2765,7 @@ namespace Oxide.Plugins
 
             #endregion
         }
-        
+
         public class HotelMarker
         {
             #region Properties and Indexers
