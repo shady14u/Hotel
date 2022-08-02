@@ -1,0 +1,49 @@
+{
+  "Platform": "Oxide",
+  "Merge Settings": {
+    "Plugin Name": "Hotel",
+    "Plugin Base Class": "RustPlugin",
+    "Creator Mode": "Plugin",
+    "Plugin Input Paths": [
+      "./"
+    ],
+    "Plugin Output Paths": [
+      "./build",
+      "D:\\RustServer\\oxide\\plugins"
+    ],
+    "Reference Definitions": [],
+    "Define Definitions": [
+      "DEBUG"
+    ],
+    "Ignore Paths": [
+      "./IgnoreThisPath"
+    ],
+    "Ignore Files": [
+      "./ZoneManager.cs"
+    ],
+    "Ignore Namespaces": [
+      "IgnoreThisNameSpace"
+    ],
+    "Code Style": {
+      "Indent Character": " ",
+      "Indent Char Amount": 4,
+      "Indent Multiplier": 1,
+      "New Line String": "\r\n",
+      "Write The Relative File Path In Region": true,
+      "Keep Comments Comments": true
+    }
+  },
+  "Compile Settings": {
+    "Assembly Paths": [
+      "D:\\RustServer\\RustDedicated_Data\\Managed"
+    ],
+    "Ignore Paths": [
+      "D:\\RustServer\\RustDedicated_Data\\Managed\\x86",
+      "D:\\RustServer\\RustDedicated_Data\\Managed\\x64"
+    ],
+    "Ignore Files": [
+      "D:\\RustServer\\RustDedicated_Data\\Managed\\Newtonsoft.Json.dll"
+    ],
+    "Compile Log Level (Hidden, Info, Warning, Error)": "Error"
+  }
+}
