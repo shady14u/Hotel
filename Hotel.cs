@@ -15,7 +15,7 @@ using UnityEngine;
 //Hotel created with PluginMerge v(1.0.8.0) by MJSU @ https://github.com/dassjosh/Plugin.Merge
 namespace Oxide.Plugins
 {
-    [Info("Hotel", "Shady14u", "2.0.28")]
+    [Info("Hotel", "Shady14u", "2.0.29")]
     [Description("Complete Hotel System for Rust.")]
     public partial class Hotel : RustPlugin
     {
@@ -1161,7 +1161,7 @@ if (room.renter == null)
     
     if (targetHotel.currency != "0" && targetHotel.currency != "1")
     {
-        var collect = Pool.GetList<Item>();
+        var collect = Pool.Get<List<Item>>();
         var itemDefinition = ItemManager.FindItemDefinition(targetHotel.currency);
         if (itemDefinition != null)
         {
@@ -1819,7 +1819,7 @@ string.Equals(hotel.hotelName, hotelName, StringComparison.CurrentCultureIgnoreC
                 
                 if (hotel.currency != "0" && hotel.currency != "1")
                 {
-                    var collect = Pool.GetList<Item>();
+                    var collect = Pool.Get<List<Item>>();
                     var itemDefinition = ItemManager.FindItemDefinition(hotel.currency);
                     if (itemDefinition != null)
                     {
